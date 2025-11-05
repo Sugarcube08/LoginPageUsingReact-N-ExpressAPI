@@ -1,0 +1,65 @@
+Phase-1: the first non-negotiable core features (MVP)
+
+These are the ones that make your product actually feel like a note app — and are technically feasible early.
+
+Rich-text editor
+
+bold/italic/underline
+
+headings
+
+bullet / numbered lists
+
+paste image
+
+paste link
+
+drag to reorder blocks (optional, but ideal)
+
+This is the single hardest part to get right — but also the most critical.
+
+Hierarchical note organization
+
+Notebook → Section → Page OR
+
+Folder → Page
+
+Choose one — don’t mix both initially.
+
+Autosave + Sync
+
+every keystroke saved automatically
+
+saves occur silently
+
+no “Save” button
+
+Full-text search
+
+search page title + note body text
+
+(this is where tools like Elasticsearch / Meilisearch / Typesense often enter, but you can start with Postgres Full Text Search)
+
+Authentication + ownership
+
+users can create account
+
+sign in/out
+
+notes tied to logged-in user
+
+That is enough to ship something that feels “real”.
+
+Phase-2: high value upgrades after MVP
+
+Sequentially:
+
+drag/drop images + attachments
+
+tags / labels
+
+offline-edit support
+
+multiple cursors (collab) → CRDT / OT
+
+OCR on images (Vision API)

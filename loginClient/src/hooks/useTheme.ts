@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-
-type ThemeMode = 'light' | 'dark';
+import type { ThemeMode } from '../types/typeUserProfile';
 
 const getPreferredTheme = (): ThemeMode => {
   if (typeof window === 'undefined') return 'light';

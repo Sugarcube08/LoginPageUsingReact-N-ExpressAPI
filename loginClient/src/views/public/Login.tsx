@@ -6,15 +6,19 @@ import { useNavigate, Link } from "react-router-dom";
 const Login = () => {
   const navigate = useNavigate();
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "", });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+    if (!formData.email.match(emailRegex)) {
+      setError("Please enter email like name@domain.com");
+      setFormData({ email: "", password: "" });
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
     try {
@@ -28,11 +32,9 @@ const Login = () => {
       };
 
       const response = await apiService(api);
-      console.log('Login successful:', response);
-      
+
       // Store the token if received
       if (response.data.token) {
-        console.log('Token:', response.data.token)
         localStorage.setItem('token', response.data.token);
       }
 
@@ -40,7 +42,7 @@ const Login = () => {
       navigate('/user/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
-      
+
       if (err.name === 'AbortError') {
         setError('Request timed out. Please try again.');
       } else if (err.response?.status === 401) {
@@ -61,6 +63,7 @@ const Login = () => {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -71,10 +74,10 @@ const Login = () => {
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-10 left-1/4 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute top-1/3 right-10 h-80 w-80 rounded-full bg-emerald-400/15 blur-[140px]" />
-        <div className="absolute bottom-[-6rem] left-[-4rem] h-[20rem] w-[20rem] rounded-full bg-sky-400/15 blur-[160px]" />
+        <div className="absolute -bottom-24 -left-16 h-80 w-[20rem] rounded-full bg-sky-400/15 blur-[160px]" />
       </div>
 
-      <div className="relative w-full max-w-2xl rounded-[24px] border border-white/10 bg-slate-950/70 px-8 py-10 shadow-[0_45px_120px_-65px_rgba(15,118,110,0.85)] backdrop-blur sm:px-10 sm:py-12">
+      <div className="relative w-full max-w-2xl rounded-3xl border border-white/10 bg-slate-950/70 px-8 py-10 shadow-[0_45px_120px_-65px_rgba(15,118,110,0.85)] backdrop-blur sm:px-10 sm:py-12">
         <header className="mb-8 text-center">
           <span className="inline-flex rounded-full border border-emerald-500/40 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
             Welcome back
@@ -97,7 +100,6 @@ const Login = () => {
               value={formData.email}
               onChange={handleChange}
               required
-              autoComplete="email"
               className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-slate-100 placeholder-slate-500 focus:border-emerald-400/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/30"
               placeholder="you@example.com"
             />
@@ -179,9 +181,8 @@ const Login = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-300/70 ${
-              isSubmitting ? "cursor-not-allowed opacity-60" : ""
-            }`}
+            className={`w-full rounded-xl bg-emerald-400 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-300/70 ${isSubmitting ? "cursor-not-allowed opacity-60" : ""
+              }`}
           >
             {isSubmitting ? "Logging in..." : "Login"}
           </button>

@@ -13,13 +13,7 @@ import {
 } from 'react-icons/fi';
 import { apiService } from '../../services/ApiService';
 import type { ApiConfig } from '../../services/ApiService';
-
-type UserProfileData = {
-    username: string;
-    email: string;
-    name: string;
-    createdAt: string;
-};
+import type { UserProfileData } from '../../types/typeUserProfile';
 
 const UserProfile = () => {
     const [profile, setProfile] = useState<UserProfileData | null>(null);

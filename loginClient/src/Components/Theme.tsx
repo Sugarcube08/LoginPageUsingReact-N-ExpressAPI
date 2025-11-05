@@ -1,7 +1,6 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
-
-type ToastCategory = "success" | "error" | "info" | "default";
+import type { ToastCategory } from "../types/typeTheme";
 
 interface ToastMessage {
   id: number;

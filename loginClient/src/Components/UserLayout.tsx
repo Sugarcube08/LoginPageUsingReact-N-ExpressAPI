@@ -1,21 +1,10 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { useEffect, useMemo, useState } from "react"
-import { FiLogOut, FiUser, FiHome, FiSettings, FiMenu, FiX, FiMoon, FiSun } from "react-icons/fi"
+import { FiMenu, FiSun, FiMoon } from "react-icons/fi"
 import { apiService } from "../services/ApiService"
 import type { ApiConfig } from "../services/ApiService"
 import { useTheme } from "../hooks/useTheme"
-
-type NavItem = {
-  path: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-};
-
-const navItems: NavItem[] = [
-  { path: "dashboard", label: "Dashboard", icon: FiHome },
-  { path: "profile", label: "Profile", icon: FiUser },
-  { path: "settings", label: "Settings", icon: FiSettings },
-];
+import Sidebar from "./Sidebar"
 
 const UserLayout = () => {
   const { isDark, toggleTheme } = useTheme()
@@ -73,11 +62,15 @@ const UserLayout = () => {
     ? location.pathname.replace('/user/', '')
     : 'dashboard'
 
-  const activeNav = useMemo(() => navItems.find((item) => activeSegment.startsWith(item.path))?.label ?? 'Dashboard', [activeSegment])
+  const activeNav = useMemo(() => {
+    if (activeSegment === 'dashboard') return 'Dashboard'
+    if (activeSegment.startsWith('profile')) return 'Profile'
+    if (activeSegment.startsWith('settings')) return 'Settings'
+    return 'Dashboard'
+  }, [activeSegment])
 
-  const handleNavigate = (path: string) => {
-    navigate(`/user/${path}`)
-  }
+  const toggleSidebar = () => setIsSidebarOpen(prev => !prev)
+  const closeSidebar = () => setIsSidebarOpen(false)
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -88,94 +81,22 @@ const UserLayout = () => {
     <div className={`relative flex min-h-screen bg-canvas bg-aurora text-primary transition-colors duration-300`}>
       {/* Mobile menu button */}
       <button
-        onClick={() => setIsSidebarOpen((prev) => !prev)}
+        onClick={toggleSidebar}
         className="md:hidden fixed top-4 left-4 z-50 rounded-full bg-primary text-white p-2 shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
         aria-label="Toggle navigation"
       >
-        {isSidebarOpen ? <FiX size={22} /> : <FiMenu size={22} />}
+        <FiMenu size={22} />
       </button>
 
-      {/* Sidebar overlay for mobile */}
-      {isSidebarOpen && (
-        <div
-          onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm md:hidden"
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:static inset-y-0 left-0 w-72 bg-glass shadow-soft md:shadow-none border-r border-strong transition-transform duration-300 ease-in-out z-50 flex flex-col backdrop-blur`}
-      >
-        <div className="flex items-center justify-between px-6 h-20 border-b border-strong">
-          <div>
-            <h1 className="text-lg font-semibold">Login Portal</h1>
-          </div>
-          <button
-            onClick={toggleTheme}
-            className="hidden md:inline-flex h-10 w-10 items-center justify-center rounded-full bg-layer text-secondary shadow-soft/40 hover:text-primary transition-colors"
-            aria-label="Toggle theme"
-          >
-            {isDark ? <FiSun size={18} /> : <FiMoon size={18} />}
-          </button>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-3 py-6 space-y-1">
-          {navItems.map(({ path, label, icon: Icon }) => {
-            const isActive = activeSegment.startsWith(path)
-            return (
-              <button
-                key={path}
-                onClick={() => {
-                  handleNavigate(path)
-                  setIsSidebarOpen(false)
-                }}
-                className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? 'bg-primary/15 text-primary shadow-inner'
-                    : 'text-secondary hover:bg-layer hover:text-primary'
-                }`}
-              >
-                <span
-                  className={`absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-full transition-all ${
-                    isActive ? 'bg-primary' : 'bg-transparent group-hover:bg-primary/40'
-                  }`}
-                />
-                <Icon className={`text-lg ${isActive ? 'text-primary' : 'text-secondary group-hover:text-primary'}`} />
-                {label}
-              </button>
-            )
-          })}
-        </nav>
-
-        <div className="border-t border-strong px-6 py-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-white text-lg font-semibold shadow-soft/60">
-              {(user?.name ?? user?.email ?? 'U')?.slice(0, 1).toUpperCase()}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-primary">{user?.name ?? 'Welcome back'}</p>
-              <p className="text-xs text-secondary truncate">{user?.email ?? 'user@example.com'}</p>
-              <div className="mt-3 flex items-center justify-between">
-                <button
-                  onClick={toggleTheme}
-                  className="md:hidden inline-flex items-center gap-2 text-xs font-medium text-secondary hover:text-primary"
-                >
-                  {isDark ? <FiSun size={16} /> : <FiMoon size={16} />}
-                  {isDark ? 'Light mode' : 'Dark mode'}
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center gap-2 rounded-lg bg-layer px-3 py-2 text-xs font-medium text-secondary shadow-soft/30 hover:text-primary transition-colors"
-                >
-                  <FiLogOut size={14} />
-                  Sign out
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
+      {/* Sidebar Component */}
+      <Sidebar 
+        isOpen={isSidebarOpen}
+        onClose={closeSidebar}
+        user={user}
+        isDark={isDark}
+        toggleTheme={toggleTheme}
+        handleLogout={handleLogout}
+      />
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col bg-layer">
@@ -202,7 +123,7 @@ const UserLayout = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
+          <div className="mx-auto w-full px-4 py-6 md:px-8 md:py-10">
             <Outlet />
           </div>
         </main>

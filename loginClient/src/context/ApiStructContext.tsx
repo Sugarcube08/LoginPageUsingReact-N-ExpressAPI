@@ -1,22 +1,5 @@
 import { createContext, useContext, useState } from "react";
-
-// Define the shape of your responseStruct
-export type ApiStruct = {
-    dataSrc?: string;
-    limit?: string;
-    skip?: string;
-    total?: string;
-    sortBy?: string;
-    sortOrder?: string;
-    searchRoute?: string;
-    searchParam?: string;
-};
-
-// Define the shape of the context value
-type ApiStructContextType = {
-    responseStruct: ApiStruct;
-    setApiStruct: React.Dispatch<React.SetStateAction<ApiStruct>>;
-};
+import type { ApiStruct, ApiStructContextType } from "../types/typeUserProfile";
 
 // Create the context with a null default
 const ApiStructContext = createContext<ApiStructContextType | null>(null);

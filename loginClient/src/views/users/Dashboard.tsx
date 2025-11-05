@@ -38,7 +38,6 @@ const Dashboard = () => {
           url: "/users/dashboard",
           method: "GET"
         });
-        console.log('Dashboard data:', response);
       } catch (err: any) {
         console.error('Dashboard error:', err);
         setError(err.response?.data?.message || 'Failed to load dashboard data');

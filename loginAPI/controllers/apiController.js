@@ -10,7 +10,7 @@ exports.getUsers = async (req, res) => {
     const page = parseInt(req.query.page);
     const sortBy = req.query.sortBy;
     const sortOrder = req.query.sortOrder;
-    const data = await apiServices.getUsers({limit: limit, skip: skip, search: search, page: page, sortBy: sortBy, sortOrder: sortOrder});
+    const data = await apiServices.getUsers({ limit: limit, skip: skip, search: search, page: page, sortBy: sortBy, sortOrder: sortOrder });
 
     res.json(data);
   } catch (err) {
@@ -20,7 +20,6 @@ exports.getUsers = async (req, res) => {
 
 exports.getUser = async (req, res) => {
   try {
-    console.log(req.user)
     res.json(req.user);
   } catch (err) {
     res.status(500).json({ "message": err.message });
@@ -31,7 +30,14 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const data = await apiServices.getUser({ email: email });
-    if (!data.data) { return res.status(401).json({ "message": "User not found" }); }
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+    if (!data.data.email || !data.data.password) {
+      return res.status(401).json({ "message": "Data not Provided" });
+    }
+    if (!data.data.email.match(emailRegex)) {
+      return res.status(401).json({ "message": "Invalid email" });
+    }
     const isMatch = await bcrypt.compare(password, data.data.password);
     if (!isMatch) { return res.status(401).json({ "message": "Invalid password" }); }
 
@@ -66,19 +72,28 @@ exports.login = async (req, res) => {
 exports.createUser = async (req, res) => {
   try {
     const { username, email, password, name } = req.body;
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
     if (!username || !email || !password || !name) {
       return res.status(400).json({ "message": "Missing required fields" });
     }
+
+    if (!email.match(emailRegex)) {
+      return res.status(401).json({ "message": "Invalid email" });
+    }
+
     const isUsernameTaken = await apiServices.getUser({ username: username });
+
     if (isUsernameTaken.data) {
       return res.status(400).json({ "message": "Username already taken" });
     }
+
     const isEmailTaken = await apiServices.getUser({ email: email });
+
     if (isEmailTaken.data) {
       return res.status(400).json({ "message": "Email already taken" });
     }
-
+    
     const user = await apiServices.createUser({ username: username, email: email, password: password, name: name });
     return res.json(user);
   } catch (err) {
@@ -152,12 +167,12 @@ exports.updatePassword = async (req, res) => {
     const { password, newPassword, confirmPassword } = req.body;
     const user = await apiServices.getUser({ username: req.user.username });
     if (!user) {
-      return res.status(401).json({data:{ "message": "User not found" }, meta: { hasMore: false }, success: false});
+      return res.status(401).json({ data: { "message": "User not found" }, meta: { hasMore: false }, success: false });
     }
     const compare = await bcrypt.compare(password, user.data.password);
     if (compare) {
       if (newPassword !== confirmPassword) {
-        return res.status(400).json({data:{ "message": "New passwords do not match" }, meta: { hasMore: false }, success: false });
+        return res.status(400).json({ data: { "message": "New passwords do not match" }, meta: { hasMore: false }, success: false });
       }
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       const updatedUser = await apiServices.updatePassword({ id: user.data.id, hashedPassword: hashedPassword });
@@ -172,9 +187,9 @@ exports.updatePassword = async (req, res) => {
       };
       res.json(responseData);
     } else {
-      return res.status(401).json({data:{ "message": "Current password is incorrect" }, meta: { hasMore: false }, success: false});
+      return res.status(401).json({ data: { "message": "Current password is incorrect" }, meta: { hasMore: false }, success: false });
     }
   } catch (err) {
-    res.status(500).json({data:{ "message": err.message }, meta: { hasMore: false }, success: false});
+    res.status(500).json({ data: { "message": err.message }, meta: { hasMore: false }, success: false });
   }
 }

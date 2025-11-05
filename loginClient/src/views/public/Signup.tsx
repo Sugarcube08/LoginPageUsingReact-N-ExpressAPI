@@ -81,6 +81,13 @@ const Signup = () => {
   // Handler for form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+    if (!email.match(emailRegex)) {
+      setError("Please enter email like name@domain.com");
+      setEmail("");
+      return;
+    }
     setError(null);
     setIsSubmitting(true);
     try {
@@ -139,10 +146,10 @@ const Signup = () => {
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute -top-10 left-1/4 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute top-1/3 right-10 h-80 w-80 rounded-full bg-emerald-400/15 blur-[140px]" />
-        <div className="absolute bottom-[-6rem] left-[-4rem] h-[20rem] w-[20rem] rounded-full bg-sky-400/15 blur-[160px]" />
+        <div className="absolute -bottom-24 -left-16 h-80 w-[20rem] rounded-full bg-skyw-400/15 blur-[160px]" />
       </div>
 
-      <div className="relative w-full max-w-2xl rounded-[24px] border border-white/10 bg-slate-950/70 px-8 py-10 shadow-[0_50px_140px_-80px_rgba(17,94,89,0.85)] backdrop-blur sm:px-10 sm:py-12">
+      <div className="relative w-full max-w-2xl rounded-3xl border border-white/10 bg-slate-950/70 px-8 py-10 shadow-[0_50px_140px_-80px_rgba(17,94,89,0.85)] backdrop-blur sm:px-10 sm:py-12">
         <header className="mb-6 text-center">
           <span className="inline-flex rounded-full border border-sky-500/40 bg-sky-400/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
             Create account
