@@ -8,7 +8,7 @@ import { Label } from './ui/label';
 interface PageCardProps {
   title?: string;
   isAdd?: boolean;
-  onClick?: (name: string) => void ;
+  onClick?: (name: string) => void;
   className?: string;
   children?: React.ReactNode;
 }
@@ -46,7 +46,7 @@ const PageCard = ({
               <div className="w-16 h-16 rounded-full bg-muted/50 dark:bg-slate-700/20 flex items-center justify-center mb-3 group-hover:bg-muted/80 dark:group-hover:bg-slate-600/50 transition-colors">
                 <FiPlus className="text-3xl text-foreground/70 dark:text-slate-300" />
               </div>
-              <span className="text-foreground/80 dark:text-slate-300 font-medium">New Page</span>
+              <span className="text-foreground/80 dark:text-slate-300 font-medium">New Notebook</span>
             </div>
           </div>
         </DialogTrigger>
@@ -61,11 +61,11 @@ const PageCard = ({
             <div className="grid gap-4 py-4">
               <div className="grid gap-3">
                 <Label htmlFor="pageName">Notebook Name</Label>
-                <Input 
-                  id="pageName" 
+                <Input
+                  id="pageName"
                   value={notebookName}
                   onChange={(e) => setNotebookName(e.target.value)}
-                  placeholder="Enter notebook name" 
+                  placeholder="Enter notebook name"
                 />
               </div>
             </div>

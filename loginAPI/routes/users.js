@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const apiController = require('../controllers/apiController');
 const notebookController = require('../controllers/notebookController');
+const itemController = require('../controllers/itemController');
 
 // Public routes
 router.get('/', (req, res) => {
@@ -25,5 +26,9 @@ router.post('/password', apiController.updatePassword);
 router.post('/notebook', notebookController.createNotebook);
 
 router.get('/notebook', notebookController.getNotebooks);
+
+router.get('/notebook/:notebookId', notebookController.getNotebook);
+
+router.post('/notebook/:notebookId/item', itemController.createItem);
 
 module.exports = router;

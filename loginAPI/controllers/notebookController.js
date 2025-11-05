@@ -42,3 +42,14 @@ exports.getNotebooks = async (req, res) => {
 
     }
 }
+
+exports.getNotebook = async (req, res) => {
+    try{
+        const notebookId = req.params.notebookId;
+        const data = await notebookService.getNBData({ notebookId: notebookId });
+        res.json(data);
+        
+    }catch{
+
+    }
+}

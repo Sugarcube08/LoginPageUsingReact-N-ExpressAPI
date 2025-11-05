@@ -63,3 +63,13 @@ offline-edit support
 multiple cursors (collab) → CRDT / OT
 
 OCR on images (Vision API)
+
+
+
+```now we have to create @Notebook.tsx which contain 
+
+a saperate sidebar on the left side with nb name as header and in contentes it contain sections/pages made in proper order, and a button which is going to add page or section, so the plan of action is like
+sidebar
+if pages/sections, show them orderly and at last that + icon to add section or page
+if no pages/sectons, only + icon to add section
+that + icon should be a dropdown menu by shadcn, which contain options "add section" or "add page" then those buttons should be the ```
