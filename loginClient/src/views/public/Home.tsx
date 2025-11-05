@@ -1,5 +1,5 @@
-import LoginButton from "../../Components/LoginButton";
-import SignupButton from "../../Components/SignupButton";
+import LoginButton from "../../components/LoginButton";
+import SignupButton from "../../components/SignupButton";
 
 const highlights = [
   "Secure authentication flows out of the box",

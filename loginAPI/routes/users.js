@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const apiController = require('../controllers/apiController');
+const notebookController = require('../controllers/notebookController');
 
 // Public routes
 router.get('/', (req, res) => {
@@ -20,5 +21,9 @@ router.delete('/user', apiController.deleteUser);
 router.post('/user', apiController.updateUser);
 
 router.post('/password', apiController.updatePassword);
+
+router.post('/notebook', notebookController.createNotebook);
+
+router.get('/notebook', notebookController.getNotebooks);
 
 module.exports = router;

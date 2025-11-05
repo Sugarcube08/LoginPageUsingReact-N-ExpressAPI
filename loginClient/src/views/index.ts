@@ -4,6 +4,7 @@ import Signup from "./public/Signup";
 import Dashboard from "./users/Dashboard";
 import UserProfile from "./users/UserProfile";
 import UserSettings from "./users/UserSettings";
+import Notebooks from "./users/Notebooks";
 
 export {
     Home,
@@ -11,5 +12,6 @@ export {
     Signup,
     Dashboard,
     UserProfile,
-    UserSettings
+    UserSettings,
+    Notebooks,
 }

@@ -1,16 +1,15 @@
-import { FiLogOut, FiUser, FiHome, FiSettings, FiMoon, FiSun } from "react-icons/fi"
+import { FiLogOut, FiMoon, FiSun,} from "react-icons/fi";
+import { IoHomeOutline, IoHomeSharp, IoSettingsOutline, IoSettingsSharp } from "react-icons/io5";
 import { useLocation, useNavigate } from "react-router-dom"
-
-type NavItem = {
-  path: string;
-  label: string;
-  icon: React.ComponentType<{ className?: string }>;
-};
+import type { NavItem } from "../types/typeComponents";
+import { RiBookletFill, RiBookletLine } from "react-icons/ri";
+import { FaRegUserCircle, FaUserCircle } from "react-icons/fa";
 
 const navItems: NavItem[] = [
-  { path: "dashboard", label: "Dashboard", icon: FiHome },
-  { path: "profile", label: "Profile", icon: FiUser },
-  { path: "settings", label: "Settings", icon: FiSettings },
+  { path: "dashboard", label: "Dashboard", icon: IoHomeOutline, activeIcon: IoHomeSharp },
+  { path: "notebooks", label: "Notebooks", icon: RiBookletLine, activeIcon: RiBookletFill },
+  { path: "profile", label: "Profile", icon: FaRegUserCircle, activeIcon: FaUserCircle },
+  { path: "settings", label: "Settings", icon: IoSettingsOutline, activeIcon: IoSettingsSharp },
 ];
 
 interface SidebarProps {
@@ -65,8 +64,10 @@ const Sidebar = ({ isOpen, onClose, user, isDark, toggleTheme, handleLogout }: S
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-6 space-y-1">
-          {navItems.map(({ path, label, icon: Icon }) => {
+          {navItems.map(({ path, label, icon: Icon, activeIcon: ActiveIcon }) => {
             const isActive = activeSegment.startsWith(path)
+            const RenderIcon = isActive && ActiveIcon ? ActiveIcon : Icon
+
             return (
               <button
                 key={path}
@@ -75,22 +76,21 @@ const Sidebar = ({ isOpen, onClose, user, isDark, toggleTheme, handleLogout }: S
                   onClose()
                 }}
                 className={`group relative flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm 
-                  font-medium transition-all duration-200 ${
-                    isActive
-                      ? 'bg-primary/15 text-primary shadow-inner'
-                      : 'text-secondary hover:bg-layer hover:text-primary'
+                    font-medium transition-all duration-200 ${isActive
+                    ? 'bg-primary/15 text-primary shadow-inner'
+                    : 'text-secondary hover:bg-layer hover:text-primary'
                   }`}
               >
                 <span
-                  className={`absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-full transition-all ${
-                    isActive ? 'bg-primary' : 'bg-transparent group-hover:bg-primary/40'
-                  }`}
+                  className={`absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-full transition-all ${isActive ? 'bg-primary' : 'bg-transparent group-hover:bg-primary/40'
+                    }`}
                 />
-                <Icon className={`text-lg ${isActive ? 'text-primary' : 'text-secondary group-hover:text-primary'}`} />
+                <RenderIcon className={`text-lg ${isActive ? 'text-primary' : 'text-secondary group-hover:text-primary'}`} />
                 {label}
               </button>
             )
           })}
+
         </nav>
 
         <div className="border-t border-strong px-6 py-5">

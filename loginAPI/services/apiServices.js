@@ -1,6 +1,4 @@
-const { response } = require('express');
 const Users = require('../models/Users');
-const bcrypt = require('bcrypt');
 
 exports.getUsers = async ({ limit, skip, search, page, sortBy, sortOrder }) => {
   let users = {}
