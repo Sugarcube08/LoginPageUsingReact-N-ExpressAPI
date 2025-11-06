@@ -53,3 +53,40 @@ exports.getNotebook = async (req, res) => {
 
     }
 }
+
+exports.deleteNotebook = async (req, res) => {
+    try{
+        const noteboookId = req.params.notebookId;
+        const data = await Notebook.findByIdAndDelete(noteboookId);
+        return res.status(200).json(responseService.createResponse({
+            statusCode: 200,
+            data,
+            meta: { hasMany: false }
+        }));
+    }catch(err){
+        return res.status(500).json(responseService.createResponse({
+            statusCode: 500,
+            message: 'Failed to delete notebook',
+            data: err
+        }));
+    }
+}
+
+exports.updateNotebook = async (req, res) => {
+    try{
+        const { title, userID } = req.body;
+        const noteboookId = req.params.notebookId;
+        const data = await Notebook.findByIdAndUpdate(noteboookId, { title: title, userID: userID });
+        return res.status(200).json(responseService.createResponse({
+            statusCode: 200,
+            data,
+            meta: { hasMany: false }
+        }));
+    }catch(err){
+        return res.status(500).json(responseService.createResponse({
+            statusCode: 500,
+            message: 'Failed to update notebook',
+            data: err
+        }));
+    }
+}

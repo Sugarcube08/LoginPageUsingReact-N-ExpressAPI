@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FiPlus, FiChevronRight, FiChevronDown, FiFile, FiFolder, FiLoader } from 'react-icons/fi';
+import { FiPlus, FiChevronRight, FiChevronDown, FiFile, FiFolder, FiLoader, FiTrash, FiEdit } from 'react-icons/fi';
 import { apiService } from '../../../services/ApiService';
 import { Button } from "../../../components/ui/button";
 import {
@@ -18,6 +18,12 @@ import {
   DialogTrigger,
   DialogClose,
 } from "../../../components/ui/dialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "../../../components/ui/context-menu"
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { toast } from 'sonner';
@@ -65,8 +71,12 @@ const Notebook = () => {
   const [newPageName, setNewPageName] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [activePage, setActivePage] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'separated' | 'sequenced'>('separated');
+  const [viewMode, setViewMode] = useState<'separated' | 'sequenced'>('sequenced');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [editingSection, setEditingSection] = useState<{id: string, name: string} | null>(null);
+  const [deletingSection, setDeletingSection] = useState<string | null>(null);
+  const [editingPage, setEditingPage] = useState<{id: string, name: string} | null>(null);
+  const [deletingPage, setDeletingPage] = useState<string | null>(null);
 
   // Define types for our combined view items
   type PageItem = Page & { type: 'page'; sectionId?: string };
@@ -74,6 +84,86 @@ const Notebook = () => {
   type CombinedItem = PageItem | SectionItem;
 
   const notebookId = window.location.pathname.split('/').pop() || '';
+
+  const handleRenameSection = async (e: React.FormEvent, sectionId: string) => {
+    e.preventDefault();
+    if (!editingSection?.name.trim()) return;
+    
+    try {
+      const response = await apiService({
+        url: `/users/notebook/${notebookId}/section/${sectionId}`,
+        method: "PUT",
+        data: {
+          title: editingSection.name,
+        },
+      });
+
+      if (response.data && response.status === 200) {
+        toast.success('Section renamed successfully');
+        setEditingSection(null);
+        fetchNotebook();
+      }
+    } catch (err) {
+      toast.error('Failed to rename section');
+    }
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    try {
+      const response = await apiService({
+        url: `/users/notebook/${notebookId}/section/${sectionId}`,
+        method: "DELETE",
+      });
+
+      if (response.data && response.status === 200) {
+        toast.success('Section deleted successfully');
+        setDeletingSection(null);
+        fetchNotebook();
+      }
+    } catch (err) {
+      toast.error('Failed to delete section');
+    }
+  };
+
+  const handleRenamePage = async (e: React.FormEvent, pageId: string) => {
+    e.preventDefault();
+    if (!editingPage?.name.trim()) return;
+    
+    try {
+      const response = await apiService({
+        url: `/users/notebook/${notebookId}/page/${pageId}`,
+        method: "PUT",
+        data: {
+          title: editingPage.name,
+        },
+      });
+
+      if (response.data && response.status === 200) {
+        toast.success('Page renamed successfully');
+        setEditingPage(null);
+        fetchNotebook();
+      }
+    } catch (err) {
+      toast.error('Failed to rename page');
+    }
+  };
+
+  const handleDeletePage = async (pageId: string) => {
+    try {
+      const response = await apiService({
+        url: `/users/notebook/${notebookId}/page/${pageId}`,
+        method: "DELETE",
+      });
+
+      if (response.data && response.status === 200) {
+        toast.success('Page deleted successfully');
+        setDeletingPage(null);
+        fetchNotebook();
+      }
+    } catch (err) {
+      toast.error('Failed to delete page');
+    }
+  };
 
   const fetchNotebook = async () => {
     setIsLoading(true);
@@ -267,17 +357,17 @@ const Notebook = () => {
 
         <div className="p-2 space-y-2 flex flex-col items-center">
           <div className="flex w-full gap-2 mb-2">
-            <Button 
-              variant={viewMode === 'separated' ? 'default' : 'outline'} 
-              size="sm" 
+            <Button
+              variant={viewMode === 'separated' ? 'default' : 'outline'}
+              size="sm"
               className="flex-1"
               onClick={() => setViewMode('separated')}
             >
               Separated
             </Button>
-            <Button 
-              variant={viewMode === 'sequenced' ? 'default' : 'outline'} 
-              size="sm" 
+            <Button
+              variant={viewMode === 'sequenced' ? 'default' : 'outline'}
+              size="sm"
               className="flex-1"
               onClick={() => setViewMode('sequenced')}
             >
@@ -409,7 +499,7 @@ const Notebook = () => {
             <div className="space-y-2">
               {(() => {
                 const items: CombinedItem[] = [];
-                
+
                 // Add direct pages
                 if (notebook?.directPages) {
                   notebook.directPages.forEach(page => {
@@ -446,59 +536,114 @@ const Notebook = () => {
 
                 return items;
               })()
-              .sort((a, b) => a.order - b.order)
-              .map((item) => {
-                if (item.type === 'section') {
-                  const section = item as SectionItem;
-                  return (
-                    <div key={`section-${section._id}`} className="space-y-1">
-                      <div 
-                        className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-accent/50"
-                        onClick={(e) => toggleSection(e, section._id)}
-                      >
-                        {section.isExpanded ? (
-                          <FiChevronDown className="h-4 w-4" />
-                        ) : (
-                          <FiChevronRight className="h-4 w-4" />
-                        )}
-                        <FiFolder className="h-4 w-4 text-yellow-500" />
-                        <span className="font-medium">{section.title}</span>
-                      </div>
-                      {section.isExpanded && section.pages && section.pages.length > 0 && (
-                        <div className="ml-8 space-y-1">
-                          {item.pages
-                            .sort((a, b) => a.order - b.order)
-                            .map((page) => (
-                              <div
-                                key={page._id}
-                                className={`flex items-center gap-2 p-2 pl-6 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
-                                onClick={(e) => handlePageClick(e, page._id)}
-                              >
-                                <FiFile className="h-4 w-4 text-blue-500" />
-                                <span className="truncate">{page.title}</span>
+                .sort((a, b) => a.order - b.order)
+                .map((item) => {
+                  if (item.type === 'section') {
+                    const section = item as SectionItem;
+                    return (
+                      <div key={`section-${section._id}`} className="space-y-1">
+                        <ContextMenu>
+                          <ContextMenuTrigger>
+                            <div
+                              className="flex items-center justify-between p-2 rounded-md hover:bg-accent cursor-pointer"
+                              onClick={(e) => toggleSection(e, section._id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-muted-foreground">
+                                  {section.pages?.length || 0}
+                                </span>
+                                {section.isExpanded ? (
+                                  <FiChevronDown className="h-4 w-4" />
+                                ) : (
+                                  <FiChevronRight className="h-4 w-4" />
+                                )}
+                                <FiFolder className="h-4 w-4 text-yellow-500" />
+                                <span className="font-medium">{section.title}</span>
                               </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                } else {
-                  const page = item as PageItem;
-                  if (page.sectionId) {
-                    return null;
+                              <span>*</span>
+                            </div>
+                          </ContextMenuTrigger>
+                          <ContextMenuContent>
+                            <ContextMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingSection({ id: section._id, name: section.title });
+                            }}>
+                              <FiEdit className="mr-2 h-4 w-4" />
+                              Rename
+                            </ContextMenuItem>
+                            <ContextMenuItem 
+                              className="text-red-500"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeletingSection(section._id);
+                              }}
+                            >
+                              <FiTrash className="mr-2 h-4 w-4" />
+                              Delete
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                        {section.isExpanded && section.pages && section.pages.length > 0 && (
+                          <div className="ml-8 space-y-1">
+                            {section.pages
+                              .sort((a, b) => a.order - b.order)
+                              .map((page) => (
+                                <ContextMenu key={page._id}>
+                                  <ContextMenuTrigger>
+                                    <div
+                                      className={`flex items-center gap-2 p-2 pl-6 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
+                                      onClick={(e) => handlePageClick(e, page._id)}
+                                    >
+                                      <FiFile className="h-4 w-4 text-blue-500" />
+                                      <span className="truncate">{page.title}</span>
+                                    </div>
+                                  </ContextMenuTrigger>
+                                  <ContextMenuContent>
+                                    <ContextMenuItem>
+                                      <FiEdit className="mr-2 h-4 w-4" />
+                                      Rename
+                                    </ContextMenuItem>
+                                    <ContextMenuItem>
+                                      <FiTrash className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </ContextMenuItem>
+                                  </ContextMenuContent>
+                                </ContextMenu>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  } else {
+                    const page = item as PageItem;
+                    if (page.sectionId) {
+                      return null;
+                    }
+                    return (
+                      <ContextMenu key={`page-${page._id}`}>
+                        <ContextMenuTrigger>
+                          <div
+                            className={`flex items-center gap-2 p-2 ml-2 pl-4 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
+                            onClick={(e) => handlePageClick(e, page._id)}
+                          >
+                            <FiFile className="h-4 w-4 text-blue-500" />
+                            <span className="truncate">{page.title}</span>
+                          </div>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem>
+                            <FiEdit className="mr-2 h-4 w-4" />
+                            Rename
+                          </ContextMenuItem>
+                          <ContextMenuItem>
+                            <FiTrash className="mr-2 h-4 w-4" />
+                            Delete
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    );
                   }
-                  return (
-                    <div
-                      key={`page-${page._id}`}
-                      className={`flex items-center gap-2 p-2 ml-2 pl-4 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
-                      onClick={(e) => handlePageClick(e, page._id)}
-                    >
-                      <FiFile className="h-4 w-4 text-blue-500" />
-                      <span className="truncate">{page.title}</span>
-                    </div>
-                  );
-                }
-              })}
+                })}
             </div>
           )}
 
@@ -511,14 +656,39 @@ const Notebook = () => {
                 {notebook.directPages
                   .sort((a, b) => a.order - b.order)
                   .map((page) => (
-                    <div
-                      key={page._id}
-                      className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
-                      onClick={(e) => handlePageClick(e, page._id)}
-                    >
-                      <FiFile className="h-4 w-4 text-blue-500" />
-                      <span className="truncate">{page.title}</span>
-                    </div>
+                    <ContextMenu>
+                      <ContextMenuTrigger>
+                        <div
+                          key={page._id}
+                          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
+                          onClick={(e) => handlePageClick(e, page._id)}
+                        >
+                          <FiFile className="h-4 w-4 text-blue-500" />
+                          <span className="truncate">{page.title}</span>
+                        </div>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingPage({ id: page._id, name: page.title });
+                          }}
+                        >
+                          <FiEdit className="mr-2 h-4 w-4" />
+                          Rename
+                        </ContextMenuItem>
+                        <ContextMenuItem 
+                          className="text-red-500"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingPage(page._id);
+                          }}
+                        >
+                          <FiTrash className="mr-2 h-4 w-4" />
+                          Delete
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
                   ))}
               </div>
             </div>
@@ -528,46 +698,188 @@ const Notebook = () => {
             notebook.sections
               .sort((a, b) => a.order - b.order)
               .map((section) => (
-                <div key={section._id} className="mb-4">
-                  <div
-                    className="flex items-center justify-between p-2 rounded-md hover:bg-accent cursor-pointer"
-                    onClick={(e) => toggleSection(e, section._id)}
-                  >
-                  <div className="flex items-center gap-2">
-                    {section.isExpanded ? (
-                      <FiChevronDown className="h-4 w-4" />
-                    ) : (
-                      <FiChevronRight className="h-4 w-4" />
-                    )}
-                    <FiFolder className="h-4 w-4 text-yellow-500" />
-                    <span className="truncate">{section.title}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {section.pages?.length || 0}
-                  </span>
-                </div>
+                <ContextMenu>
+                  <ContextMenuTrigger>
 
-                {section.isExpanded && section.pages.length > 0 && (
-                  <div className="ml-6 space-y-1">
-                    {section.pages
-                      .sort((a, b) => a.order - b.order)
-                      .map((page) => (
-                        <div
-                          key={page._id}
-                          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'
-                            }`}
-                          onClick={(e) => handlePageClick(e, page._id)}
-                        >
-                          <FiFile className="h-4 w-4 text-blue-500" />
-                          <span className="truncate">{page.title}</span>
+                    <div key={section._id} className="mb-4">
+                      <div
+                        className="flex items-center justify-between p-2 rounded-md hover:bg-accent cursor-pointer"
+                        onClick={(e) => toggleSection(e, section._id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {section.pages?.length || 0}
+                          </span>
+                          {section.isExpanded ? (
+                            <FiChevronDown className="h-4 w-4" />
+                          ) : (
+                            <FiChevronRight className="h-4 w-4" />
+                          )}
+                          <FiFolder className="h-4 w-4 text-yellow-500" />
+                          <span className="truncate">{section.title}</span>
                         </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-            )))}
+                        <span>*</span>
+                      </div>
+
+                      {section.isExpanded && section.pages.length > 0 && (
+                        <div className="ml-6 space-y-1">
+                          {section.pages
+                            .sort((a, b) => a.order - b.order)
+                            .map((page) => (
+                              <div
+                                key={page._id}
+                                className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'
+                                  }`}
+                                onClick={(e) => handlePageClick(e, page._id)}
+                              >
+                                <FiFile className="h-4 w-4 text-blue-500" />
+                                <span className="truncate">{page.title}</span>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent>
+                    <ContextMenuItem>
+                      {/* Rename  */}
+                      <FiEdit className="mr-2 h-4 w-4" />
+                      Rename
+                    </ContextMenuItem>
+                    <ContextMenuItem>
+                      {/* Delete  */}
+                      <FiTrash className="mr-2 h-4 w-4" />
+                      Delete
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
+              )))}
         </div>
       </div>
+
+      {/* Dialogs for Section Actions */}
+      <Dialog open={!!editingSection} onOpenChange={(open) => !open && setEditingSection(null)}>
+        <DialogContent>
+          <form onSubmit={(e) => editingSection && handleRenameSection(e, editingSection.id)}>
+            <DialogHeader>
+              <DialogTitle>Rename Section</DialogTitle>
+              <DialogDescription>
+                Enter a new name for this section
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="sectionRename">Section Name</Label>
+                <Input
+                  id="sectionRename"
+                  value={editingSection?.name || ''}
+                  onChange={(e) => editingSection && setEditingSection({...editingSection, name: e.target.value})}
+                  autoComplete="off"
+                  placeholder="Enter section name"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingSection(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!editingSection?.name.trim()}>
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deletingSection} onOpenChange={(open) => !open && setDeletingSection(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Section</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this section? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeletingSection(null)}>
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive"
+              onClick={() => {
+                if (deletingSection) {
+                  handleDeleteSection(deletingSection);
+                }
+              }}
+            >
+              Delete Section
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialogs for Page Actions */}
+      <Dialog open={!!editingPage} onOpenChange={(open) => !open && setEditingPage(null)}>
+        <DialogContent>
+          <form onSubmit={(e) => editingPage && handleRenamePage(e, editingPage.id)}>
+            <DialogHeader>
+              <DialogTitle>Rename Page</DialogTitle>
+              <DialogDescription>
+                Enter a new name for this page
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="pageRename">Page Name</Label>
+                <Input
+                  id="pageRename"
+                  value={editingPage?.name || ''}
+                  onChange={(e) => editingPage && setEditingPage({...editingPage, name: e.target.value})}
+                  autoComplete="off"
+                  placeholder="Enter page name"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditingPage(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={!editingPage?.name.trim()}>
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deletingPage} onOpenChange={(open) => !open && setDeletingPage(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Page</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this page? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setDeletingPage(null)}>
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive"
+              onClick={() => {
+                if (deletingPage) {
+                  handleDeletePage(deletingPage);
+                }
+              }}
+            >
+              Delete Page
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-6">

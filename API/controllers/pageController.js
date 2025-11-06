@@ -60,3 +60,40 @@ exports.createPage = async (req, res) => {
     }));
   }
 };
+
+exports.updatePage = async (req, res) => {
+  try {
+    const { title, content, notebookID, sectionID, order } = req.body;
+    const pageId = req.params.pageId;
+    const data = await Page.findByIdAndUpdate(pageId, { title: title, content: content, notebookID: notebookID, sectionID: sectionID, order: order });
+    return res.status(200).json(responseService.createResponse({
+      statusCode: 200,
+      data,
+      meta: { hasMany: false }
+    }));
+  } catch (err) {
+    return res.status(500).json(responseService.createResponse({
+      statusCode: 500,
+      message: 'Failed to update page',
+      data: err
+    }));
+  }
+}
+
+exports.deletePage = async (req, res) => {
+  try {
+    const pageId = req.params.pageId;
+    const data = await Page.findByIdAndDelete(pageId);
+    return res.status(200).json(responseService.createResponse({
+      statusCode: 200,
+      data,
+      meta: { hasMany: false }
+    }));
+  } catch (err) {
+    return res.status(500).json(responseService.createResponse({
+      statusCode: 500,
+      message: 'Failed to delete page',
+      data: err
+    }));
+  }
+}
