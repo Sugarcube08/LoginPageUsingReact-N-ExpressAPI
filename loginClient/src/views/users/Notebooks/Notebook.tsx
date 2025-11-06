@@ -20,36 +20,58 @@ import {
 } from "../../../components/ui/dialog";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
-import { toast } from '../../../hooks/use-toast';
+import { toast } from 'sonner';
 
 interface Page {
-  id: string;
+  _id: string;
+  notebookID: string;
+  sectionID: string | null;
   title: string;
   content: string;
-  type: 'page';
+  order: number;
   createdAt: string;
   updatedAt: string;
+  __v: number;
 }
 
 interface Section {
-  id: string;
+  _id: string;
   title: string;
-  type: 'section';
+  notebookID: string;
+  order: number;
   pages: Page[];
-  isExpanded: boolean;
+  isExpanded?: boolean;
   createdAt: string;
   updatedAt: string;
+  __v: number;
+}
+
+interface NotebookData {
+  _id: string;
+  userID: string;
+  title: string;
+  directPages: Page[];
+  sections: Section[];
+  createdAt: string;
+  updatedAt: string;
+  __v: number;
 }
 
 const Notebook = () => {
-  const [notebookName, setNotebookName] = useState<string>("");
-  const [sections, setSections] = useState<Section[]>([]);
-  const [activePage, setActivePage] = useState<string | null>(null);
+  const [notebook, setNotebook] = useState<NotebookData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [newSectionName, setNewSectionName] = useState<string>("");
   const [newPageName, setNewPageName] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const [activePage, setActivePage] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'separated' | 'sequenced'>('separated');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Define types for our combined view items
+  type PageItem = Page & { type: 'page'; sectionId?: string };
+  type SectionItem = Section & { type: 'section' };
+  type CombinedItem = PageItem | SectionItem;
 
   const notebookId = window.location.pathname.split('/').pop() || '';
 
@@ -63,17 +85,19 @@ const Notebook = () => {
       });
 
       if (response.data && response.status === 200) {
-        console.log(response.data);
-        setNotebookName(response.data.notebook.title);
-        setSections(response.data.notebook.sections || []);
+        const notebookData = {
+          ...response.data.notebook,
+          sections: (response.data.notebook.sections || []).map((section: Section) => ({
+            ...section,
+            isExpanded: false,
+            pages: section.pages || []
+          }))
+        };
+        setNotebook(notebookData);
       }
     } catch (err) {
       setError('Failed to load notebook');
-      toast({
-        title: 'Error',
-        description: 'Failed to load notebook',
-        variant: 'destructive',
-      });
+      toast.error('Failed to load notebook');
     } finally {
       setIsLoading(false);
     }
@@ -81,80 +105,129 @@ const Notebook = () => {
 
   const handleAddSection = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newSectionName.trim()) return;
+    if (!newSectionName.trim() || !notebook) return;
 
     try {
       const response = await apiService({
-        url: `/notebook/${notebookId}/section`,
+        url: `/users/notebook/${notebookId}/section`,
         method: "POST",
-        data: { 
+        data: {
           title: newSectionName,
-          parentID: null,
-          order: sections.length,
-          type: 'section'
+          notebookID: notebookId,
+          order: notebook.sections.length + notebook.directPages.length,
         },
       });
 
-      if (response.success && response.data) {
-        setSections(prev => [...prev, { ...response.data, pages: [], isExpanded: false }]);
-        setNewSectionName("");
-        toast({
-          title: 'Success',
-          description: 'Section created successfully',
+      if (response.data && response.status === 201) {
+        setNotebook(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            sections: [
+              ...prev.sections,
+              {
+                ...response.data,
+                pages: [],
+                isExpanded: true
+              }
+            ].sort((a, b) => a.order - b.order)
+          };
         });
+        setNewSectionName("");
+        toast.success('Section created successfully');
+
+        // Close the dialog and dropdown
+        const dialogClose = document.querySelector('[data-close-dialog]');
+        if (dialogClose) (dialogClose as HTMLElement).click();
+        setIsDropdownOpen(false);
       }
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create section',
-        variant: 'destructive',
-      });
+      toast.error('Failed to create section');
     }
   };
 
   const handleAddPage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPageName.trim() || !selectedSection) return;
+    if (!newPageName.trim() || !notebook) return;
 
     try {
+      let order = 0;
+      if (selectedSection) {
+        const section = notebook.sections.find(s => s._id === selectedSection);
+        order = section ? section.pages.length : 0;
+      } else {
+        order = notebook.directPages.length + notebook.sections.length;
+      }
+
       const response = await apiService({
-        url: `/section/${selectedSection}/page`,
+        url: `/users/notebook/${notebookId}/page`,
         method: "POST",
-        data: { title: newPageName, content: "" },
+        data: {
+          title: newPageName,
+          notebookID: notebookId,
+          sectionID: selectedSection || null,
+          order: order,
+        },
       });
 
-      if (response.success && response.data) {
-        setSections(prev =>
-          prev.map(section =>
-            section.id === selectedSection
-              ? { ...section, pages: [...section.pages, response.data as Page] }
-              : section
-          )
-        );
-        setNewPageName("");
-        setSelectedSection(null);
-        toast({
-          title: 'Success',
-          description: 'Page created successfully',
+      if (response.data && response.status === 201) {
+        const newPage = response.data;
+        setNotebook(prev => {
+          if (!prev) return null;
+
+          if (selectedSection) {
+            return {
+              ...prev,
+              sections: prev.sections.map(section =>
+                section._id === selectedSection
+                  ? {
+                    ...section,
+                    pages: [...section.pages, newPage].sort((a, b) => a.order - b.order)
+                  }
+                  : section
+              )
+            };
+          } else {
+            // Add to direct pages
+            return {
+              ...prev,
+              directPages: [...prev.directPages, newPage].sort((a, b) => a.order - b.order)
+            };
+          }
         });
+
+        setNewPageName("");
+        toast.success('Page created successfully');
+
+        // Close the dialog and dropdown
+        const dialogClose = document.querySelector('[data-close-dialog]');
+        if (dialogClose) (dialogClose as HTMLElement).click();
+        setIsDropdownOpen(false);
       }
     } catch (err) {
-      toast({
-        title: 'Error',
-        description: 'Failed to create page',
-        variant: 'destructive',
-      });
+      toast.error('Failed to create page');
     }
   };
 
-  const toggleSection = (sectionId: string) => {
-    setSections(prev =>
-      prev.map(section =>
-        section.id === sectionId
-          ? { ...section, isExpanded: !section.isExpanded }
-          : section
-      )
-    );
+  const toggleSection = (e: React.MouseEvent, sectionId: string) => {
+    e.stopPropagation();
+    setNotebook(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        sections: prev.sections.map(section => ({
+          ...section,
+          isExpanded: section._id === sectionId
+            ? !section.isExpanded
+            : section.isExpanded
+        }))
+      };
+    });
+  };
+
+  const handlePageClick = (e: React.MouseEvent, pageId: string) => {
+    e.stopPropagation();
+    setActivePage(prevId => prevId === pageId ? '' : pageId);
   };
 
   useEffect(() => {
@@ -187,11 +260,31 @@ const Notebook = () => {
       {/* Sidebar */}
       <div className="w-64 border-r border-border bg-card overflow-y-auto shrink-0 flex flex-col">
         <div className="p-4 border-b border-border">
-          <h2 className="text-lg font-semibold truncate">{notebookName || 'Untitled Notebook'}</h2>
+          <h2 className="text-lg font-semibold truncate">
+            {notebook?.title || 'Untitled Notebook'}
+          </h2>
         </div>
 
         <div className="p-2 space-y-2 flex flex-col items-center">
-          <DropdownMenu>
+          <div className="flex w-full gap-2 mb-2">
+            <Button 
+              variant={viewMode === 'separated' ? 'default' : 'outline'} 
+              size="sm" 
+              className="flex-1"
+              onClick={() => setViewMode('separated')}
+            >
+              Separated
+            </Button>
+            <Button 
+              variant={viewMode === 'sequenced' ? 'default' : 'outline'} 
+              size="sm" 
+              className="flex-1"
+              onClick={() => setViewMode('sequenced')}
+            >
+              Sequenced
+            </Button>
+          </div>
+          <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-full justify-start gap-2">
                 <FiPlus className="h-4 w-4" />
@@ -222,6 +315,7 @@ const Notebook = () => {
                             id="sectionName"
                             value={newSectionName}
                             onChange={(e) => setNewSectionName(e.target.value)}
+                            autoComplete="off"
                             placeholder="Enter section name"
                             autoFocus
                           />
@@ -229,7 +323,7 @@ const Notebook = () => {
                       </div>
                       <DialogFooter>
                         <DialogClose asChild>
-                          <Button type="button" variant="outline">Cancel</Button>
+                          <Button type="button" variant="outline" data-close-dialog>Cancel</Button>
                         </DialogClose>
                         <Button type="submit" disabled={!newSectionName.trim()}>
                           Create Section
@@ -241,19 +335,10 @@ const Notebook = () => {
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={(e) => {
                 e.preventDefault();
-                if (sections.length === 0) {
-                  toast({
-                    title: 'No Sections',
-                    description: 'Please create a section first',
-                    variant: 'destructive',
-                  });
-                  return;
-                }
               }}>
                 <Dialog>
                   <DialogTrigger
                     className="w-full text-left"
-                    onClick={() => sections.length > 0 && setSelectedSection(sections[0].id)}
                   >
                     <div className="flex items-center gap-2">
                       <FiFile className="h-4 w-4" />
@@ -274,6 +359,7 @@ const Notebook = () => {
                           <Input
                             id="pageName"
                             value={newPageName}
+                            autoComplete="off"
                             onChange={(e) => setNewPageName(e.target.value)}
                             placeholder="Enter page name"
                             autoFocus
@@ -287,9 +373,9 @@ const Notebook = () => {
                             onChange={(e) => setSelectedSection(e.target.value)}
                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           >
-                            <option value="">Select a section</option>
-                            {sections.map((section) => (
-                              <option key={section.id} value={section.id}>
+                            <option value="">Direct Notebook</option>
+                            {notebook?.sections.map((section) => (
+                              <option key={section._id} value={section._id}>
                                 {section.title}
                               </option>
                             ))}
@@ -298,13 +384,13 @@ const Notebook = () => {
                       </div>
                       <DialogFooter>
                         <DialogClose asChild>
-                          <Button type="button" variant="outline">
+                          <Button type="button" variant="outline" data-close-dialog>
                             Cancel
                           </Button>
                         </DialogClose>
                         <Button
                           type="submit"
-                          disabled={!newPageName.trim() || !selectedSection}
+                          disabled={!newPageName.trim()}
                         >
                           Create Page
                         </Button>
@@ -318,75 +404,193 @@ const Notebook = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
-          {sections.length === 0 ? (
-            <div className="text-center text-muted-foreground p-4">
-              <p>No sections yet. Create one to get started.</p>
+          {/* Combined view for sequenced mode */}
+          {viewMode === 'sequenced' && (
+            <div className="space-y-2">
+              {(() => {
+                const items: CombinedItem[] = [];
+                
+                // Add direct pages
+                if (notebook?.directPages) {
+                  notebook.directPages.forEach(page => {
+                    items.push({
+                      ...page,
+                      type: 'page' as const,
+                      sectionId: undefined
+                    });
+                  });
+                }
+
+                // Add sections and their pages
+                if (notebook?.sections) {
+                  notebook.sections.forEach(section => {
+                    // Add the section itself
+                    items.push({
+                      ...section,
+                      type: 'section' as const,
+                      pages: section.pages || []
+                    });
+
+                    // Add section pages
+                    if (section.pages) {
+                      section.pages.forEach(page => {
+                        items.push({
+                          ...page,
+                          type: 'page' as const,
+                          sectionId: section._id
+                        });
+                      });
+                    }
+                  });
+                }
+
+                return items;
+              })()
+              .sort((a, b) => a.order - b.order)
+              .map((item) => {
+                if (item.type === 'section') {
+                  const section = item as SectionItem;
+                  return (
+                    <div key={`section-${section._id}`} className="space-y-1">
+                      <div 
+                        className="flex items-center gap-2 p-2 rounded-md cursor-pointer hover:bg-accent/50"
+                        onClick={(e) => toggleSection(e, section._id)}
+                      >
+                        {section.isExpanded ? (
+                          <FiChevronDown className="h-4 w-4" />
+                        ) : (
+                          <FiChevronRight className="h-4 w-4" />
+                        )}
+                        <FiFolder className="h-4 w-4 text-yellow-500" />
+                        <span className="font-medium">{section.title}</span>
+                      </div>
+                      {section.isExpanded && section.pages && section.pages.length > 0 && (
+                        <div className="ml-8 space-y-1">
+                          {item.pages
+                            .sort((a, b) => a.order - b.order)
+                            .map((page) => (
+                              <div
+                                key={page._id}
+                                className={`flex items-center gap-2 p-2 pl-6 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
+                                onClick={(e) => handlePageClick(e, page._id)}
+                              >
+                                <FiFile className="h-4 w-4 text-blue-500" />
+                                <span className="truncate">{page.title}</span>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                } else {
+                  const page = item as PageItem;
+                  if (page.sectionId) {
+                    return null;
+                  }
+                  return (
+                    <div
+                      key={`page-${page._id}`}
+                      className={`flex items-center gap-2 p-2 ml-2 pl-4 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
+                      onClick={(e) => handlePageClick(e, page._id)}
+                    >
+                      <FiFile className="h-4 w-4 text-blue-500" />
+                      <span className="truncate">{page.title}</span>
+                    </div>
+                  );
+                }
+              })}
             </div>
-          ) : (
-            <div className="space-y-1">
-              {sections.map((section) => (
-                <div key={section.id} className="space-y-1">
+          )}
+
+          {viewMode === 'separated' && notebook?.directPages && notebook.directPages.length > 0 && (
+            <div className="mb-4">
+              <div className="text-xs font-medium text-muted-foreground px-2 mb-1">
+                PAGES
+              </div>
+              <div className="space-y-1">
+                {notebook.directPages
+                  .sort((a, b) => a.order - b.order)
+                  .map((page) => (
+                    <div
+                      key={page._id}
+                      className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
+                      onClick={(e) => handlePageClick(e, page._id)}
+                    >
+                      <FiFile className="h-4 w-4 text-blue-500" />
+                      <span className="truncate">{page.title}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {viewMode === 'separated' && notebook?.sections && notebook.sections.length > 0 && (
+            notebook.sections
+              .sort((a, b) => a.order - b.order)
+              .map((section) => (
+                <div key={section._id} className="mb-4">
                   <div
                     className="flex items-center justify-between p-2 rounded-md hover:bg-accent cursor-pointer"
-                    onClick={() => toggleSection(section.id)}
+                    onClick={(e) => toggleSection(e, section._id)}
                   >
-                    <div className="flex items-center gap-2">
-                      {section.isExpanded ? (
-                        <FiChevronDown className="h-4 w-4" />
-                      ) : (
-                        <FiChevronRight className="h-4 w-4" />
-                      )}
-                      <FiFolder className="h-4 w-4 text-yellow-500" />
-                      <span className="truncate">{section.title}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {section.pages.length}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    {section.isExpanded ? (
+                      <FiChevronDown className="h-4 w-4" />
+                    ) : (
+                      <FiChevronRight className="h-4 w-4" />
+                    )}
+                    <FiFolder className="h-4 w-4 text-yellow-500" />
+                    <span className="truncate">{section.title}</span>
                   </div>
+                  <span className="text-xs text-muted-foreground">
+                    {section.pages?.length || 0}
+                  </span>
+                </div>
 
-                  {section.isExpanded && section.pages.length > 0 && (
-                    <div className="ml-6 space-y-1">
-                      {section.pages.map((page) => (
+                {section.isExpanded && section.pages.length > 0 && (
+                  <div className="ml-6 space-y-1">
+                    {section.pages
+                      .sort((a, b) => a.order - b.order)
+                      .map((page) => (
                         <div
-                          key={page.id}
-                          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${activePage === page.id ? 'bg-accent' : 'hover:bg-accent/50'
+                          key={page._id}
+                          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'
                             }`}
-                          onClick={() => setActivePage(page.id)}
+                          onClick={(e) => handlePageClick(e, page._id)}
                         >
                           <FiFile className="h-4 w-4 text-blue-500" />
                           <span className="truncate">{page.title}</span>
                         </div>
                       ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+                  </div>
+                )}
+              </div>
+            )))}
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-6">
         {activePage ? (
-          <div className="prose max-w-none">
-            <h1>Page Content</h1>
-            <p>This is where your page content will be displayed.</p>
-          </div>
+          <div>Page content for {activePage} will be displayed here</div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-muted-foreground text-center p-8">
-            <div className="max-w-md space-y-4">
-              <h2 className="text-2xl font-semibold">Welcome to {notebookName || 'your notebook'}</h2>
-              <p>
-                Get started by creating a section and adding pages to organize your notes.
-                Click the "+" button above to begin.
-              </p>
-            </div>
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground space-y-4">
+            <p>Select a page to view or create a new one</p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedSection(notebook?.sections[0]?._id || null);
+                const dialogTrigger = document.querySelector('button[aria-haspopup="dialog"]');
+                if (dialogTrigger) (dialogTrigger as HTMLElement).click();
+              }}
+            >
+              <FiPlus className="mr-2 h-4 w-4" />
+              New Page
+            </Button>
           </div>
         )}
       </div>
     </div>
   );
-};
-
+}
 export default Notebook;

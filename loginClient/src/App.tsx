@@ -3,6 +3,7 @@ import { BrowserRouter, useNavigate } from "react-router-dom"
 import WebRoutes from "./routes/web"
 import { ApiStructProvider } from "./context/ApiStructContext"
 import { setNavigator } from "./utils/navigation"
+import { Toaster } from "sonner"
 
 const NavigationBridge = () => {
   const navigate = useNavigate()
@@ -20,7 +21,8 @@ const App = () => {
       <BrowserRouter>
         <NavigationBridge />
         <WebRoutes />
-      </BrowserRouter >
+        <Toaster position="top-center" />
+      </BrowserRouter>
     </ApiStructProvider>
   )
 }

@@ -1,11 +1,10 @@
 const Notebook = require('../models/Notebooks');
-const Items = require('../models/Items');
-const Pages = require('../models/Pages');
+const Page = require('../models/Pages');
+const Section = require('../models/Sections');
 const responseService = require('../services/responseService');
-const { response } = require('express');
 
-exports.getNBs = async ({userID, limit, skip, search, page, sortBy, sortOrder}) => {
-//  notebook of only userID user
+exports.getNBs = async ({ userID, limit, skip, search, page, sortBy, sortOrder }) => {
+  //  notebook of only userID user
   let notebooks = {}
   try {
     if (search) {
@@ -23,14 +22,16 @@ exports.getNBs = async ({userID, limit, skip, search, page, sortBy, sortOrder}) 
     ]).countDocuments() : await Notebook.find().where({ userID: userID }).countDocuments();
     let data;
     if (notebooks.length === 0) {
-      data = responseService.createResponse({statusCode: 200, data: [], meta: {
-        total: totalNotebooks,
-        currentPage: (skip / limit) + 1,
-        limit: limit || 10,
-        skip: skip || 0,
-        pages: Math.ceil(skip / limit) + 1,
-        totalPages: Math.ceil(totalNotebooks - skip / (limit || 10))
-      }});
+      data = responseService.createResponse({
+        statusCode: 200, data: [], meta: {
+          total: totalNotebooks,
+          currentPage: (skip / limit) + 1,
+          limit: limit || 10,
+          skip: skip || 0,
+          pages: Math.ceil(skip / limit) + 1,
+          totalPages: Math.ceil(totalNotebooks - skip / (limit || 10))
+        }
+      });
       return data;
     } else {
       data = {
@@ -53,29 +54,39 @@ exports.getNBs = async ({userID, limit, skip, search, page, sortBy, sortOrder}) 
 
 exports.getNBData = async ({ notebookId }) => {
   try {
-    // get all the complete data of the notebook including pages and sections
-    const notebook = await Notebook.findById(notebookId);
-    const pages = await Pages.find({ notebookID: notebookId });
-    const sections = await Items.find({ notebookID: notebookId, type: 'section' });
-    const totalPages = await Pages.countDocuments({ notebookID: notebookId });
-    const totalSections = await Items.countDocuments({ notebookID: notebookId, type: 'section' });
-    const responseData = responseService.createResponse({
-      data: {
-        notebook: notebook,
-        pages: pages,
-        sections: sections
-      },
-      meta: {
-        totalPages: totalPages,
-        totalSections: totalSections,
-        hasMore: (totalPages> pages.length || totalSections > sections.length) ? true : false
-      },
-      statusCode: 200,
+    const notebook = await Notebook.findById(notebookId).lean();
+    const sections = await Section.find({ notebookID: notebookId }).lean();
+    const allPages = await Page.find({ notebookID: notebookId }).lean();
 
+    if (!notebook) {
+      return { error: 'Notebook not found' };
+    }
+    const directPages = allPages.filter(page => !page.sectionID);
+    const sectionedPages = allPages.filter(page => page.sectionID);
+
+    const nestedSections = sections.map(section => {
+      const sectionPages = sectionedPages.filter(
+        page => String(page.sectionID) === String(section._id)
+      );
+
+      return {
+        ...section,
+        pages: sectionPages,
+      };
     });
-    return responseData;
 
-  }catch(err){
+    const data = {
+      notebook: {
+        ...notebook,
+        directPages: directPages,
+        sections: nestedSections,
+      },
+    };
 
+    return responseService.createResponse({ statusCode: 200, data: data, meta: { hasMany: true } });
+
+  } catch (err) {
+    console.error("Error fetching notebook data:", err);
+    return { error: 'Failed to retrieve notebook data' };
   }
-}
+};
