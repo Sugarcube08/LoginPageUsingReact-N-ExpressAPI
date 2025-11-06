@@ -1,46 +1,44 @@
 const Section = require('../models/Sections');
 const responseService = require('../services/responseService');
 const Page = require('../models/Pages');
+const Notebook = require('../models/Notebooks');
 
 exports.createSection = async (req, res) => {
   try {
-    const { title, notebookID, order } = req.body;
+    const { title, notebookID } = req.body;
 
     if (!title) {
       return res.status(400).json(responseService.createResponse({
         statusCode: 400,
-        message: 'Section title is required'
+        status: 'error',
+        message: 'Title is required'
       }));
     }
 
     if (!notebookID) {
       return res.status(400).json(responseService.createResponse({
         statusCode: 400,
+        status: 'error',
         message: 'Notebook ID is required'
       }));
     }
-    
-    const regex = new RegExp(`^${title}( \\((\\d+)\\))?$`, "i");
 
-    const existing = await Section
-      .find({ notebookID, title: regex })
-      .select('title')
-      .lean();
-
-    const used = new Set(existing.map(x => x.title.toLowerCase()));
-
-    let newTitle = title;
-    let counter = 1;
-
-    while (used.has(newTitle.toLowerCase())) {
-      newTitle = `${title} (${counter})`;
-      counter++
+    // check if notebook exists
+    const notebook = await Notebook.findById(notebookID);
+    if (!notebook) {
+      return res.status(404).json(responseService.createResponse({
+        statusCode: 404,
+        status: 'error',
+        message: 'Notebook not found'
+      }));
     }
-    
+
+    // create a new section with a unique name
+    const newTitle = await generateUniqueSectionTitle(notebookID, title);
+
     const data = await Section.create({
       title: newTitle,
-      notebookID,
-      order
+      notebookID
     });
 
     return res.status(201).json(responseService.createResponse({
@@ -60,10 +58,13 @@ exports.createSection = async (req, res) => {
 
 exports.updateSection = async (req, res) => {
   try{
-    const { title, notebookID, order } = req.body;
+    const { title, notebookID } = req.body;
     const sectionId = req.params.sectionId;
     // update section whatever comes in 
-    const data = await Section.findByIdAndUpdate(sectionId, { title: title, notebookID: notebookID, order: order });
+    const data = await Section.findByIdAndUpdate(sectionId, { 
+      title: title, 
+      notebookID: notebookID 
+    });
     return res.status(200).json(responseService.createResponse({
       statusCode: 200,
       data,

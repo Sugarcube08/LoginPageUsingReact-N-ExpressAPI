@@ -204,7 +204,6 @@ const Notebook = () => {
         data: {
           title: newSectionName,
           notebookID: notebookId,
-          order: notebook.sections.length + notebook.directPages.length,
         },
       });
 
@@ -220,7 +219,7 @@ const Notebook = () => {
                 pages: [],
                 isExpanded: true
               }
-            ].sort((a, b) => a.order - b.order)
+            ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
           };
         });
         setNewSectionName("");
@@ -241,14 +240,6 @@ const Notebook = () => {
     if (!newPageName.trim() || !notebook) return;
 
     try {
-      let order = 0;
-      if (selectedSection) {
-        const section = notebook.sections.find(s => s._id === selectedSection);
-        order = section ? section.pages.length : 0;
-      } else {
-        order = notebook.directPages.length + notebook.sections.length;
-      }
-
       const response = await apiService({
         url: `/users/notebook/${notebookId}/page`,
         method: "POST",
@@ -256,7 +247,6 @@ const Notebook = () => {
           title: newPageName,
           notebookID: notebookId,
           sectionID: selectedSection || null,
-          order: order,
         },
       });
 
@@ -272,7 +262,7 @@ const Notebook = () => {
                 section._id === selectedSection
                   ? {
                     ...section,
-                    pages: [...section.pages, newPage].sort((a, b) => a.order - b.order)
+                    pages: [...section.pages, newPage].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                   }
                   : section
               )
@@ -281,7 +271,7 @@ const Notebook = () => {
             // Add to direct pages
             return {
               ...prev,
-              directPages: [...prev.directPages, newPage].sort((a, b) => a.order - b.order)
+              directPages: [...prev.directPages, newPage].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
             };
           }
         });
@@ -536,7 +526,7 @@ const Notebook = () => {
 
                 return items;
               })()
-                .sort((a, b) => a.order - b.order)
+                .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                 .map((item) => {
                   if (item.type === 'section') {
                     const section = item as SectionItem;
@@ -586,7 +576,7 @@ const Notebook = () => {
                         {section.isExpanded && section.pages && section.pages.length > 0 && (
                           <div className="ml-8 space-y-1">
                             {section.pages
-                              .sort((a, b) => a.order - b.order)
+                              .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                               .map((page) => (
                                 <ContextMenu key={page._id}>
                                   <ContextMenuTrigger>
@@ -676,7 +666,7 @@ const Notebook = () => {
               </div>
               <div className="space-y-1">
                 {notebook.directPages
-                  .sort((a, b) => a.order - b.order)
+                  .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                   .map((page) => (
                     <ContextMenu>
                       <ContextMenuTrigger>
@@ -768,7 +758,7 @@ const Notebook = () => {
                   {section.isExpanded && section.pages.length > 0 && (
                     <div className="ml-6 space-y-1">
                       {section.pages
-                        .sort((a, b) => a.order - b.order)
+                        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
                         .map((page) => (
                           <ContextMenu key={page._id}>
                             <ContextMenuTrigger>

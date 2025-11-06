@@ -1,49 +1,58 @@
 const Notebook = require('../models/Notebooks');
 const Page = require('../models/Pages');
+const Section = require('../models/Sections');
 const responseService = require('../services/responseService');
 
 exports.createPage = async (req, res) => {
   try {
-    const { title, content, notebookID, sectionID, order } = req.body;
+    const { title, content, notebookID, sectionID } = req.body;
 
     if (!title) {
       return res.status(400).json(responseService.createResponse({
         statusCode: 400,
-        message: 'Page title is required'
+        status: 'error',
+        message: 'Title is required'
       }));
     }
 
     if (!notebookID) {
       return res.status(400).json(responseService.createResponse({
         statusCode: 400,
+        status: 'error',
         message: 'Notebook ID is required'
       }));
     }
 
-    const regex = new RegExp(`^${title}( \\((\\d+)\\))?$`, "i");
-
-    // ✅ search only inside this section for duplicates
-    const existing = await Page
-      .find({ notebookID, sectionID, title: regex })
-      .select('title')
-      .lean();
-
-    const used = new Set(existing.map(x => x.title.toLowerCase()));
-
-    let newTitle = title;
-    let counter = 1;
-
-    while (used.has(newTitle.toLowerCase())) {
-      newTitle = `${title} (${counter})`;
-      counter++;
+    // check if notebook exists
+    const notebook = await Notebook.findById(notebookID);
+    if (!notebook) {
+      return res.status(404).json(responseService.createResponse({
+        statusCode: 404,
+        status: 'error',
+        message: 'Notebook not found'
+      }));
     }
+
+    // check if section exists if sectionID is provided
+    if (sectionID) {
+      const section = await Section.findById(sectionID);
+      if (!section) {
+        return res.status(404).json(responseService.createResponse({
+          statusCode: 404,
+          status: 'error',
+          message: 'Section not found'
+        }));
+      }
+    }
+
+    // create a new page with a unique name
+    const newTitle = await generateUniquePageTitle(notebookID, sectionID || null, title);
 
     const data = await Page.create({
       title: newTitle,
       content,
       notebookID,
-      sectionID,
-      order
+      sectionID
     });
 
     return res.status(201).json(responseService.createResponse({
@@ -63,9 +72,14 @@ exports.createPage = async (req, res) => {
 
 exports.updatePage = async (req, res) => {
   try {
-    const { title, content, notebookID, sectionID, order } = req.body;
+    const { title, content, notebookID, sectionID } = req.body;
     const pageId = req.params.pageId;
-    const data = await Page.findByIdAndUpdate(pageId, { title: title, content: content, notebookID: notebookID, sectionID: sectionID, order: order });
+    const data = await Page.findByIdAndUpdate(pageId, { 
+      title: title, 
+      content: content, 
+      notebookID: notebookID, 
+      sectionID: sectionID 
+    });
     return res.status(200).json(responseService.createResponse({
       statusCode: 200,
       data,
