@@ -71,11 +71,10 @@ const Notebook = () => {
   const [newPageName, setNewPageName] = useState<string>("");
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [activePage, setActivePage] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'separated' | 'sequenced'>('sequenced');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [editingSection, setEditingSection] = useState<{id: string, name: string} | null>(null);
+  const [editingSection, setEditingSection] = useState<{ id: string, name: string } | null>(null);
   const [deletingSection, setDeletingSection] = useState<string | null>(null);
-  const [editingPage, setEditingPage] = useState<{id: string, name: string} | null>(null);
+  const [editingPage, setEditingPage] = useState<{ id: string, name: string } | null>(null);
   const [deletingPage, setDeletingPage] = useState<string | null>(null);
 
   // Define types for our combined view items
@@ -88,7 +87,7 @@ const Notebook = () => {
   const handleRenameSection = async (e: React.FormEvent, sectionId: string) => {
     e.preventDefault();
     if (!editingSection?.name.trim()) return;
-    
+
     try {
       const response = await apiService({
         url: `/users/notebook/${notebookId}/section/${sectionId}`,
@@ -128,7 +127,7 @@ const Notebook = () => {
   const handleRenamePage = async (e: React.FormEvent, pageId: string) => {
     e.preventDefault();
     if (!editingPage?.name.trim()) return;
-    
+
     try {
       const response = await apiService({
         url: `/users/notebook/${notebookId}/page/${pageId}`,
@@ -345,147 +344,127 @@ const Notebook = () => {
           </h2>
         </div>
 
-        <div className="p-2 space-y-2 flex flex-col items-center">
-          <div className="flex w-full gap-2 mb-2">
-            <Button
-              variant={viewMode === 'separated' ? 'default' : 'outline'}
-              size="sm"
-              className="flex-1"
-              onClick={() => setViewMode('separated')}
-            >
-              Separated
-            </Button>
-            <Button
-              variant={viewMode === 'sequenced' ? 'default' : 'outline'}
-              size="sm"
-              className="flex-1"
-              onClick={() => setViewMode('sequenced')}
-            >
-              Sequenced
-            </Button>
-          </div>
-          <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
-            <DropdownMenuTrigger asChild>
+        <DropdownMenu open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
+          <DropdownMenuTrigger asChild>
+            <div className='p-2'>
               <Button variant="outline" className="w-full justify-start gap-2">
                 <FiPlus className="h-4 w-4" />
                 <span>Add</span>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48">
-              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                <Dialog>
-                  <DialogTrigger className="w-full text-left">
-                    <div className="flex items-center gap-2">
-                      <FiFolder className="h-4 w-4" />
-                      <span>New Section</span>
-                    </div>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <form onSubmit={handleAddSection}>
-                      <DialogHeader>
-                        <DialogTitle>Add New Section</DialogTitle>
-                        <DialogDescription>
-                          Create a new section to organize your pages
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="sectionName">Section Name</Label>
-                          <Input
-                            id="sectionName"
-                            value={newSectionName}
-                            onChange={(e) => setNewSectionName(e.target.value)}
-                            autoComplete="off"
-                            placeholder="Enter section name"
-                            autoFocus
-                          />
-                        </div>
+            </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-48">
+            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+              <Dialog>
+                <DialogTrigger className="w-full text-left">
+                  <div className="flex items-center gap-2">
+                    <FiFolder className="h-4 w-4" />
+                    <span>New Section</span>
+                  </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <form onSubmit={handleAddSection}>
+                    <DialogHeader>
+                      <DialogTitle>Add New Section</DialogTitle>
+                      <DialogDescription>
+                        Create a new section to organize your pages
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="sectionName">Section Name</Label>
+                        <Input
+                          id="sectionName"
+                          value={newSectionName}
+                          onChange={(e) => setNewSectionName(e.target.value)}
+                          autoComplete="off"
+                          placeholder="Enter section name"
+                          autoFocus
+                        />
                       </div>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" variant="outline" data-close-dialog>Cancel</Button>
-                        </DialogClose>
-                        <Button type="submit" disabled={!newSectionName.trim()}>
-                          Create Section
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={(e) => {
-                e.preventDefault();
-              }}>
-                <Dialog>
-                  <DialogTrigger
-                    className="w-full text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FiFile className="h-4 w-4" />
-                      <span>New Page</span>
                     </div>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <form onSubmit={handleAddPage}>
-                      <DialogHeader>
-                        <DialogTitle>Add New Page</DialogTitle>
-                        <DialogDescription>
-                          Create a new page in a section
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                          <Label htmlFor="pageName">Page Name</Label>
-                          <Input
-                            id="pageName"
-                            value={newPageName}
-                            autoComplete="off"
-                            onChange={(e) => setNewPageName(e.target.value)}
-                            placeholder="Enter page name"
-                            autoFocus
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="sectionSelect">Section</Label>
-                          <select
-                            id="sectionSelect"
-                            value={selectedSection || ''}
-                            onChange={(e) => setSelectedSection(e.target.value)}
-                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            <option value="">Direct Notebook</option>
-                            {notebook?.sections.map((section) => (
-                              <option key={section._id} value={section._id}>
-                                {section.title}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline" data-close-dialog>Cancel</Button>
+                      </DialogClose>
+                      <Button type="submit" disabled={!newSectionName.trim()}>
+                        Create Section
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={(e) => {
+              e.preventDefault();
+            }}>
+              <Dialog>
+                <DialogTrigger
+                  className="w-full text-left"
+                >
+                  <div className="flex items-center gap-2">
+                    <FiFile className="h-4 w-4" />
+                    <span>New Page</span>
+                  </div>
+                </DialogTrigger>
+                <DialogContent>
+                  <form onSubmit={handleAddPage}>
+                    <DialogHeader>
+                      <DialogTitle>Add New Page</DialogTitle>
+                      <DialogDescription>
+                        Create a new page in a section
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="pageName">Page Name</Label>
+                        <Input
+                          id="pageName"
+                          value={newPageName}
+                          autoComplete="off"
+                          onChange={(e) => setNewPageName(e.target.value)}
+                          placeholder="Enter page name"
+                          autoFocus
+                        />
                       </div>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button type="button" variant="outline" data-close-dialog>
-                            Cancel
-                          </Button>
-                        </DialogClose>
-                        <Button
-                          type="submit"
-                          disabled={!newPageName.trim()}
+                      <div className="grid gap-2">
+                        <Label htmlFor="sectionSelect">Section</Label>
+                        <select
+                          id="sectionSelect"
+                          value={selectedSection || ''}
+                          onChange={(e) => setSelectedSection(e.target.value)}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Create Page
+                          <option value="">Direct Notebook</option>
+                          {notebook?.sections.map((section) => (
+                            <option key={section._id} value={section._id}>
+                              {section.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline" data-close-dialog>
+                          Cancel
                         </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+                      </DialogClose>
+                      <Button
+                        type="submit"
+                        disabled={!newPageName.trim()}
+                      >
+                        Create Page
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <div className="flex-1 overflow-y-auto p-2">
-          {/* Combined view for sequenced mode */}
-          {viewMode === 'sequenced' && (
             <div className="space-y-2">
               {(() => {
                 const items: CombinedItem[] = [];
@@ -561,7 +540,7 @@ const Notebook = () => {
                               <FiEdit className="mr-2 h-4 w-4" />
                               Rename
                             </ContextMenuItem>
-                            <ContextMenuItem 
+                            <ContextMenuItem
                               className="text-red-500"
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -589,7 +568,7 @@ const Notebook = () => {
                                     </div>
                                   </ContextMenuTrigger>
                                   <ContextMenuContent>
-                                    <ContextMenuItem 
+                                    <ContextMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setEditingPage({ id: page._id, name: page.title });
@@ -598,7 +577,7 @@ const Notebook = () => {
                                       <FiEdit className="mr-2 h-4 w-4" />
                                       Rename
                                     </ContextMenuItem>
-                                    <ContextMenuItem 
+                                    <ContextMenuItem
                                       className="text-red-500"
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -632,7 +611,7 @@ const Notebook = () => {
                           </div>
                         </ContextMenuTrigger>
                         <ContextMenuContent>
-                          <ContextMenuItem 
+                          <ContextMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
                               setEditingPage({ id: page._id, name: page.title });
@@ -641,7 +620,7 @@ const Notebook = () => {
                             <FiEdit className="mr-2 h-4 w-4" />
                             Rename
                           </ContextMenuItem>
-                          <ContextMenuItem 
+                          <ContextMenuItem
                             className="text-red-500"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -657,146 +636,6 @@ const Notebook = () => {
                   }
                 })}
             </div>
-          )}
-
-          {viewMode === 'separated' && notebook?.directPages && notebook.directPages.length > 0 && (
-            <div className="mb-4">
-              <div className="text-xs font-medium text-muted-foreground px-2 mb-1">
-                PAGES
-              </div>
-              <div className="space-y-1">
-                {notebook.directPages
-                  .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                  .map((page) => (
-                    <ContextMenu>
-                      <ContextMenuTrigger>
-                        <div
-                          key={page._id}
-                          className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
-                          onClick={(e) => handlePageClick(e, page._id)}
-                        >
-                          <FiFile className="h-4 w-4 text-blue-500" />
-                          <span className="truncate">{page.title}</span>
-                        </div>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent>
-                        <ContextMenuItem 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingPage({ id: page._id, name: page.title });
-                          }}
-                        >
-                          <FiEdit className="mr-2 h-4 w-4" />
-                          Rename
-                        </ContextMenuItem>
-                        <ContextMenuItem 
-                          className="text-red-500"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeletingPage(page._id);
-                          }}
-                        >
-                          <FiTrash className="mr-2 h-4 w-4" />
-                          Delete
-                        </ContextMenuItem>
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {viewMode === 'separated' && notebook?.sections && notebook.sections.length > 0 && (
-            notebook.sections
-              .sort((a, b) => a.order - b.order)
-              .map((section) => (
-                <div key={section._id} className="mb-4">
-                  <ContextMenu>
-                    <ContextMenuTrigger>
-                      <div
-                        className="flex items-center justify-between p-2 rounded-md hover:bg-accent cursor-pointer"
-                        onClick={(e) => toggleSection(e, section._id)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            {section.pages?.length || 0}
-                          </span>
-                          {section.isExpanded ? (
-                            <FiChevronDown className="h-4 w-4" />
-                          ) : (
-                            <FiChevronRight className="h-4 w-4" />
-                          )}
-                          <FiFolder className="h-4 w-4 text-yellow-500" />
-                          <span className="truncate">{section.title}</span>
-                        </div>
-                        <span>*</span>
-                      </div>
-                    </ContextMenuTrigger>
-                    <ContextMenuContent>
-                      <ContextMenuItem 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingSection({ id: section._id, name: section.title });
-                        }}
-                      >
-                        <FiEdit className="mr-2 h-4 w-4" />
-                        Rename
-                      </ContextMenuItem>
-                      <ContextMenuItem 
-                        className="text-red-500"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingSection(section._id);
-                        }}
-                      >
-                        <FiTrash className="mr-2 h-4 w-4" />
-                        Delete
-                      </ContextMenuItem>
-                    </ContextMenuContent>
-                  </ContextMenu>
-
-                  {section.isExpanded && section.pages.length > 0 && (
-                    <div className="ml-6 space-y-1">
-                      {section.pages
-                        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-                        .map((page) => (
-                          <ContextMenu key={page._id}>
-                            <ContextMenuTrigger>
-                              <div
-                                className={`flex items-center gap-2 p-2 rounded-md cursor-pointer ${activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50'}`}
-                                onClick={(e) => handlePageClick(e, page._id)}
-                              >
-                                <FiFile className="h-4 w-4 text-blue-500" />
-                                <span className="truncate">{page.title}</span>
-                              </div>
-                            </ContextMenuTrigger>
-                            <ContextMenuContent>
-                              <ContextMenuItem 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingPage({ id: page._id, name: page.title });
-                                }}
-                              >
-                                <FiEdit className="mr-2 h-4 w-4" />
-                                Rename
-                              </ContextMenuItem>
-                              <ContextMenuItem 
-                                className="text-red-500"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setDeletingPage(page._id);
-                                }}
-                              >
-                                <FiTrash className="mr-2 h-4 w-4" />
-                                Delete
-                              </ContextMenuItem>
-                            </ContextMenuContent>
-                          </ContextMenu>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              )))}
         </div>
       </div>
 
@@ -816,7 +655,7 @@ const Notebook = () => {
                 <Input
                   id="sectionRename"
                   value={editingSection?.name || ''}
-                  onChange={(e) => editingSection && setEditingSection({...editingSection, name: e.target.value})}
+                  onChange={(e) => editingSection && setEditingSection({ ...editingSection, name: e.target.value })}
                   autoComplete="off"
                   placeholder="Enter section name"
                   autoFocus
@@ -847,8 +686,8 @@ const Notebook = () => {
             <Button type="button" variant="outline" onClick={() => setDeletingSection(null)}>
               Cancel
             </Button>
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               variant="destructive"
               onClick={() => {
                 if (deletingSection) {
@@ -878,7 +717,7 @@ const Notebook = () => {
                 <Input
                   id="pageRename"
                   value={editingPage?.name || ''}
-                  onChange={(e) => editingPage && setEditingPage({...editingPage, name: e.target.value})}
+                  onChange={(e) => editingPage && setEditingPage({ ...editingPage, name: e.target.value })}
                   autoComplete="off"
                   placeholder="Enter page name"
                   autoFocus
@@ -909,8 +748,8 @@ const Notebook = () => {
             <Button type="button" variant="outline" onClick={() => setDeletingPage(null)}>
               Cancel
             </Button>
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               variant="destructive"
               onClick={() => {
                 if (deletingPage) {
@@ -945,7 +784,7 @@ const Notebook = () => {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }
 export default Notebook;
