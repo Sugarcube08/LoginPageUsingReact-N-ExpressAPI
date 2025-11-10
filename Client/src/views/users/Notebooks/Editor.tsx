@@ -8,9 +8,9 @@ import { Button } from "../../../components/ui/button";
 const PAGE_W = 793;
 const PAGE_H = 1122;
 
-const PAD = 8;                          // equals Tailwind p-2
+const PAD = 8;
 const MIN_BLOCK_WIDTH = 140;
-const MIN_BLOCK_HEIGHT = PAD * 2 + 24;  // padding + one text line approx
+const MIN_BLOCK_HEIGHT = PAD * 2 + 20;
 
 type DragState = { id: string; dx: number; dy: number } | null;
 type ResizeState =
@@ -28,8 +28,6 @@ const Editor = () => {
   const dragRef = useRef<DragState>(null);
   const resizeRef = useRef<ResizeState>(null);
   const pageRef = useRef<HTMLDivElement>(null);
-
-  // contentEditable nodes registry
   const contentRefs = useMemo(() => new Map<string, HTMLDivElement | null>(), []);
   const setContentRef = useCallback(
     (id: string) => (el: HTMLDivElement | null) => { contentRefs.set(id, el); },
@@ -49,8 +47,6 @@ const Editor = () => {
       return v;
     });
   }, []);
-
-  // ---------- helpers ----------
 
   const normalizeBlock = (raw: RawBlock | null | undefined): Block | null => {
     if (!raw) return null;
@@ -162,15 +158,13 @@ const Editor = () => {
     return scratch.innerHTML;
   };
 
-  // ===== PERFECT FIT: grow + shrink exactly to content (overlay outline outside)
+  // shrink exactly to content (overlay outline outside)
   const fitBlockToContent = useCallback((id: string) => {
     queueMicrotask(() => {
       const el = contentRefs.get(id);
       if (!el) return;
       const bk = blocksRef.current.find(b => b.id === id);
       if (!bk) return;
-
-      // measure natural height (includes padding since box-sizing: border-box)
       el.style.height = "auto";
       const natural = el.scrollHeight;
 
@@ -178,7 +172,6 @@ const Editor = () => {
       const maxH = PAGE_H - bk.y;
       const height = Math.min(desired, maxH);
 
-      // apply to DOM for zero-flicker visuals
       el.style.height = `${height}px`;
       el.style.overflowY = "hidden";
 
@@ -232,7 +225,6 @@ const Editor = () => {
     if (updated && nextZ !== zCounter) setZCounter(nextZ);
   }, [applyBlockUpdate, zCounter]);
 
-  // ---------- data IO ----------
 
   const fetchPageContent = useCallback(async () => {
     if (!notebookId || !pageId) return;
@@ -241,10 +233,9 @@ const Editor = () => {
       const response = await apiService({ url: `/users/notebook/${notebookId}/page/${pageId}`, method: "GET" });
       const raw = getBlocksArray(response);
       const normalized = raw.map(normalizeBlock).filter(Boolean) as Block[];
-      const bumped = normalized.map(b => ({ ...b, z: (b.z ?? 1) + 100 })); // avoid UI overlaps
       hydratedOnceRef.current = false;
-      syncBlocks(bumped);
-      const maxZ = bumped.reduce((acc, b) => Math.max(acc, b.z ?? 1), 1);
+      syncBlocks(normalized);
+      const maxZ = normalized.reduce((acc, b) => Math.max(acc, b.z ?? 1), 1);
       setZCounter(maxZ > 0 ? maxZ : 1);
     } catch {
       toast.error("Failed to load page content.");
@@ -282,24 +273,20 @@ const Editor = () => {
     return () => document.removeEventListener("pointerdown", handler);
   }, [editingId, exitEditMode]);
 
-  // ---------- events ----------
-
   const updateContent = useCallback((id: string, htmlRaw: string) => {
     const html = sanitizeHtml(htmlRaw);
     applyBlockUpdate(id, b => (b.content === html ? b : { ...b, content: html }));
-    fitBlockToContent(id); // realtime grow + shrink
+    fitBlockToContent(id);
   }, [applyBlockUpdate, fitBlockToContent]);
 
   const handlePageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.currentTarget !== e.target) return; // background only
+    if (e.currentTarget !== e.target) return;
     if (selectedId) setSelectedId(null);
     exitEditMode();
   }, [exitEditMode, selectedId]);
 
   const handlePageDoubleClick = useCallback(async (e: React.MouseEvent<HTMLDivElement>) => {
     exitEditMode();
-
-    // if inside a block → edit it instead of creating new
     const hit = blockAtClick(e);
     if (hit) {
       bringToFront(hit.id);
@@ -307,7 +294,7 @@ const Editor = () => {
       return;
     }
 
-    // empty area → create new
+    // empty area → create new block
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -449,7 +436,6 @@ const Editor = () => {
     }
   }, [notebookId, pageId, persistBlock]);
 
-  // ---------- render ----------
 
   return (
     <div className="w-full h-full flex flex-col items-center py-10 bg-background text-foreground overflow-auto">
@@ -463,12 +449,13 @@ const Editor = () => {
         ref={pageRef}
         onClick={handlePageClick}
         onDoubleClick={handlePageDoubleClick}
-        className="relative bg-card border border-border shadow-sm flex-shrink-0"
+        className="relative bg-card border border-border shadow-sm shrink-0"
         style={{
           width: PAGE_W,
           height: PAGE_H,
           cursor: "crosshair",
           userSelect: dragRef.current || resizeRef.current ? "none" : "auto",
+          zIndex: 0,
         }}
         onPointerMove={(e) => { onDragMove(e); onResizeMove(e); }}
         onPointerUp={(e) => { endDrag(e); endResize(e); }}
@@ -488,7 +475,7 @@ const Editor = () => {
                 left: b.x,
                 top: b.y,
                 width: b.width,
-                height: b.height,        // container tracks content height for hit-tests
+                height: b.height,
                 zIndex: b.z,
               }}
               onClick={(e) => {
@@ -541,11 +528,11 @@ const Editor = () => {
                 ref={setContentRef(b.id)}
                 contentEditable={isEditing}
                 suppressContentEditableWarning
-                className={`w-full h-full p-2 text-sm outline-none whitespace-pre-wrap break-words ${
+                className={`w-full h-full p-2 text-sm outline-none whitespace-pre-wrap wrap-break-words ${
                   isEditing ? "cursor-text caret-blue-500" : "cursor-default"
                 }`}
                 style={{
-                  boxSizing: "border-box", // padding included in height; scrollHeight includes it too
+                  boxSizing: "border-box", 
                   userSelect: isEditing ? "text" : "none",
                   overflowY: "hidden",
                 }}

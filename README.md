@@ -1,58 +1,80 @@
-# LoginPageUsingReact-N-ExpressAPI
+# Notux One
 
-**LoginPageUsingReact-N-ExpressAPI** is a full-stack authentication starter kit that pairs a hardened Express.js REST API with a modern React + Vite frontend. It ships with JWT-secured endpoints, a polished Tailwind UI, and ready-to-use data table and profile management flows so you can jump-start login-enabled products in minutes.
+**Notux One** is a full-stack notes workspace that couples a secure Express.js API with a modern React + Vite frontend. It gives authenticated users notebooks, sections, and freeform A4 pages with draggable rich-text blocks, wrapped in a glassmorphism-inspired theme.
 
 Repository: [Sugarcube08/LoginPageUsingReact-N-ExpressAPI](https://github.com/Sugarcube08/LoginPageUsingReact-N-ExpressAPI)
 
 ---
 
-## 🚧 Project Status: Active Development
+## 🚧 Project Status
 
-The project is functional and evolving. Expect feature additions and refinements—issues and pull requests are welcome!
-
----
-
-## ✨ Key Features
-
-### Backend API
-- Express server configured with CORS, Helmet, cookie parsing, JSON handling, and JWT-protected routes for user resources (@loginAPI/app.js#1-46; @loginAPI/middleware/auth.js#1-42)
-- Layered controllers and services for login, signup, profile, and password maintenance along with secure password hashing via bcrypt (@loginAPI/controllers/apiController.js#5-180; @loginAPI/services/apiServices.js#5-139; @loginAPI/models/Users.js#1-37)
-- MongoDB persistence with environment-driven connection management (@loginAPI/config/db.js#1-17; @loginAPI/.env#1-2)
-- Seeder script that provisions demo users with hashed credentials for quick local testing (@loginAPI/seeders/seedUsers.js#9-83)
-
-### Frontend Client
-- React Router–powered application delivering public marketing pages, auth flows, and protected user dashboards via dedicated layouts (@loginClient/src/routes/web.tsx#1-30; @loginClient/src/App.tsx#1-28)
-- Tailwind CSS UI featuring responsive login/signup forms, data-rich dashboards, and profile editors (@loginClient/src/views/public/Login.tsx#1-202; @loginClient/src/views/users/Dashboard.tsx#1-107; @loginClient/src/views/users/UserProfile.tsx#1-424)
-- Axios interceptors with shared context to persist tokens, normalize API payloads, and guard navigation (@loginClient/src/services/ApiInterceptor.ts#12-87; @loginClient/src/services/ApiService.ts#1-74; @loginClient/src/context/ApiStructContext.tsx#1-52)
+Active development. Core flows are usable, but new notebook and editor capabilities are landing frequently.
 
 ---
 
-## 🧱 Repository Structure
+## ✨ Highlights
+
+### Backend (`API/`)
+- Express 4 server with Helmet, CORS, cookie parsing, and centralized error handling @API/app.js#1-48
+- JWT authentication + bcrypt-backed credential flow exposing login, signup, profile, password, and notebook resources @API/controllers/apiController.js#5-195 @API/middleware/auth.js#1-42
+- Hierarchical notebook domain (Notebooks → Sections → Pages → Blocks) with dedicated controllers/services and MongoDB persistence @API/routes/notebook.js#1-40 @API/models/Notebooks.js#1-10 @API/models/Pages.js#1-55 @API/models/Blocks.js#1-65
+- Response helper and pagination-aware services for consistent API payloads @API/services/notebookService.js#1-92 @API/services/responseService.js#1-9
+
+### Frontend (`Client/`)
+- React 19 + Vite 7 + TypeScript app styled with Tailwind 4 and custom gradient theme @Client/package.json#1-62 @Client/src/index.css#1-153
+- Router-driven layouts (Theme, Auth, User) with toast notifications and protected routing @Client/src/routes/web.tsx#1-33 @Client/src/components/Theme.tsx#1-78 @Client/src/layouts/UserLayout.tsx
+- Notebook explorer with dialogs, context menus, renaming/deleting flows, and section-aware navigation @Client/src/views/users/Notebooks/Notebooks.tsx#1-309
+- A4 canvas editor featuring draggable/resizable blocks, inline formatting, and autosized content panes per page @Client/src/views/users/Notebooks/Editor.tsx#1-400
+
+---
+
+## 🧱 Repository Layout
 
 ```text
 .
-├── loginAPI/            # Express.js REST API
-└── loginClient/         # React + Vite frontend
+├── API/       # Express.js REST API + MongoDB models
+├── Client/    # React + Vite frontend
+└── PlanOfAction.md
 ```
 
 | Path | Purpose |
 | --- | --- |
-| `loginAPI/controllers/` | Route logic and JWT token issuance (@loginAPI/controllers/apiController.js#30-64) |
-| `loginAPI/services/` | Data access layer for MongoDB models (@loginAPI/services/apiServices.js#5-139) |
-| `loginAPI/middleware/auth.js` | Bearer token guard for protected routes (@loginAPI/middleware/auth.js#1-42) |
-| `loginAPI/seeders/seedUsers.js` | Demo user bootstrapper (@loginAPI/seeders/seedUsers.js#9-83) |
-| `loginClient/src/routes/` | Client-side routing definitions (@loginClient/src/routes/web.tsx#1-30) |
-| `loginClient/src/views/` | Page-level React components for public and user experiences (@loginClient/src/views/index.ts#1-15) |
-| `loginClient/src/services/` | Axios wrapper and shared API helpers (@loginClient/src/services/ApiService.ts#1-74) |
+| `API/controllers/` | Auth + notebook controllers orchestrating services and responses |
+| `API/services/` | Database access, pagination, title helpers, and reusable response builder |
+| `API/routes/` | REST endpoints for auth, user profile, notebooks, sections, pages, and blocks |
+| `Client/src/views/` | Page-level React components (public auth flows, user dashboards, notebooks) |
+| `Client/src/components/` | Cross-cutting UI (buttons, dialogs, PageCard, Theme shell) |
+| `Client/src/services/ApiService.ts` | Axios wrapper with token persistence and error handling |
 
 ---
+
+## 🧭 Domain Overview
+
+- **Authentication** – Users sign up, log in, and manage profiles with JWT-secured requests @API/controllers/apiController.js#29-195
+- **Notebooks** – CRUD endpoints scoped to the authenticated user; notebooks own sections and pages @API/controllers/notebookController.js#5-92
+- **Sections & Pages** – Optional section grouping and automatic title generation keep hierarchies tidy @API/controllers/sectionController.js#1-104 @API/controllers/pageController.js#1-109 @API/services/pageTitleService.js#1-82
+- **Blocks** – Freeform text blocks live on pages with draggable coordinates and dimensions @API/controllers/blockController.js @API/models/Blocks.js#1-65
+- **Editor UI** – The client renders notebooks, sections, and pages, providing dialogs for CRUD and an interactive canvas for block editing @Client/src/views/users/Notebooks/Notebook.tsx#1-873 @Client/src/views/users/Notebooks/Editor.tsx#1-400
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Tech |
+| --- | --- |
+| Backend | Node.js 18+, Express 4, MongoDB, Mongoose, JWT, bcrypt |
+| Frontend | React 19, React Router 7, TypeScript, Tailwind CSS 4, Radix UI primitives, Sonner toasts |
+| Tooling | Vite 7, ESLint 9, TypeScript 5.9 |
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ and npm (or pnpm/yarn)
+- Node.js 18+ (npm installed)
 - MongoDB instance (local or hosted)
 
-### 1. Clone the repository
+### 1. Clone the repo
 
 ```bash
 git clone https://github.com/Sugarcube08/LoginPageUsingReact-N-ExpressAPI.git
@@ -61,113 +83,97 @@ cd LoginPageUsingReact-N-ExpressAPI
 
 ### 2. Configure environment variables
 
-| Location | Variables |
+| Location | Keys |
 | --- | --- |
-| `loginAPI/.env` | `MONGO_URI=<mongodb-connection-string>`<br>`APP_KEY=<jwt-secret>` |
-| `loginClient/.env` | `VITE_API_URL=http://localhost:3000` |
+| `API/.env` | `MONGO_URI=<mongodb-connection-string>`<br>`APP_KEY=<jwt-secret>` |
+| `Client/.env` | `VITE_API_URL=http://localhost:3000` |
 
-Ensure the API `PORT` defined in `loginAPI/bin/www` aligns with the URL consumed by the frontend (@loginAPI/bin/www#15-90; @loginClient/src/services/ApiInterceptor.ts#12-27).
+Ensure the API port exported by `API/bin/www` matches the URL in `VITE_API_URL`.
 
-### 3. Install & run the backend
+### 3. Install dependencies & run services
 
 ```bash
-cd loginAPI
+# Backend
+cd API
 npm install
-
-# Optional: seed demo accounts
-npm run seed:users
-
-# Start the API (defaults to http://localhost:3000)
 npm start
-```
 
-The server connects to MongoDB on launch and exposes the REST endpoints listed below (@loginAPI/config/db.js#8-17; @loginAPI/routes/index.js#5-16; @loginAPI/routes/users.js#5-22).
+# (Optional) seed notebooks/users once a seeder is added
 
-### 4. Install & run the frontend
-
-```bash
-cd ../loginClient
+# Frontend (in a second shell)
+cd ../Client
 npm install
-
-# Launch the Vite dev server (defaults to http://localhost:5173)
 npm run dev
 ```
 
-The client proxies API requests to `VITE_API_URL` via its Axios interceptor layer (@loginClient/src/services/ApiInterceptor.ts#12-87).
-
-### 5. Sign in with demo credentials
-
-After seeding, try `jdoe / password@123` or any other generated user from the seeder script (@loginAPI/seeders/seedUsers.js#9-39).
+Frontend defaults to http://localhost:5173 and proxies API requests to `VITE_API_URL` via the shared Axios instance @Client/src/services/ApiService.ts#1-160.
 
 ---
 
-## 🔌 API Overview
+## 📜 Useful Scripts
 
-| Method | Route | Description | Auth |
-| --- | --- | --- | --- |
-| `GET` | `/` | Health check & welcome payload | Public |
-| `POST` | `/login` | Authenticate via email & password, returns JWT bearer token | Public |
-| `POST` | `/signup` | Register a new user with unique username/email | Public |
-| `GET` | `/users/dashboard` | Paginated user directory with search & sorting | Bearer token |
-| `GET` | `/users/user` | Fetch the authenticated user profile | Bearer token |
-| `POST` | `/users/user` | Update profile fields (name, username, email) | Bearer token |
-| `DELETE` | `/users/user` | Delete the authenticated user | Bearer token |
-| `POST` | `/users/password` | Change password with current credential verification | Bearer token |
-
-Controller logic and JWT issuance live in `apiController`, while persistence workflows sit inside the `apiServices` layer (@loginAPI/controllers/apiController.js#30-180; @loginAPI/services/apiServices.js#83-139).
-
-### Query parameters
-`GET /users/dashboard` supports `limit`, `skip`, `page`, `search`, `sortBy`, and `sortOrder` for data table integrations (@loginAPI/controllers/apiController.js#5-19; @loginAPI/services/apiServices.js#5-50).
+| Location | Command | Description |
+| --- | --- | --- |
+| `API/` | `npm start` | Run the Express API (uses `bin/www`) |
+| `Client/` | `npm run dev` | Start Vite development server |
+| `Client/` | `npm run build` | Type-check then build production assets |
+| `Client/` | `npm run preview` | Preview the production build |
+| `Client/` | `npm run lint` | Lint the frontend codebase |
 
 ---
 
-## 🧭 Frontend Routes
+## 🔌 Selected API Routes
 
-| Path | Description |
-| --- | --- |
-| `/` | Marketing-style landing page showcasing the auth suite (@loginClient/src/views/public/Home.tsx#10-70) |
-| `/auth/login` | Email/password login with token persistence and error handling (@loginClient/src/views/public/Login.tsx#16-195) |
-| `/auth/signup` | Registration flow mirroring backend validation (@loginClient/src/routes/web.tsx#15-18) |
-| `/user/dashboard` | Protected data table with pagination, sorting, and loading states (@loginClient/src/views/users/Dashboard.tsx#14-101) |
-| `/user/profile` | Profile viewer/editor with optimistic updates (@loginClient/src/views/users/UserProfile.tsx#24-420) |
-| `/user/settings` | Placeholder for additional account controls (@loginClient/src/routes/web.tsx#21-24) |
+| Method | Route | Description |
+| --- | --- | --- |
+| `POST` | `/login` | Log in and receive a JWT bearer token |
+| `POST` | `/signup` | Register a new user |
+| `GET` | `/users/dashboard` | List users with pagination & search |
+| `GET` | `/users/notebook` | List notebooks for the current user |
+| `POST` | `/users/notebook` | Create a notebook |
+| `PUT` | `/users/notebook/:notebookId` | Rename/update notebook metadata |
+| `DELETE` | `/users/notebook/:notebookId` | Delete a notebook |
+| `POST` | `/users/notebook/:notebookId/section` | Create a section inside a notebook |
+| `POST` | `/users/notebook/:notebookId/page` | Create a page (optionally within a section) |
+| `GET` | `/users/notebook/:notebookId/page/:pageId` | Fetch page blocks |
+| `POST` | `/users/notebook/:notebookId/page/:pageId/block` | Create a block on the page |
+| `PUT` | `/users/notebook/:notebookId/page/:pageId/block/:blockId` | Update block content/position |
 
-Routing is scoped under reusable layout wrappers that apply theming and guard logic (@loginClient/src/routes/web.tsx#11-24; @loginClient/src/Components/UserLayout.tsx#1-266).
+Paginated services return `data` and `meta` payloads that describe total counts and page cursors for easier table integrations @API/services/apiServices.js#1-137 @API/services/notebookService.js#1-92.
 
 ---
 
-## 🛠️ Development Notes
-- Tokens are stored in `localStorage` and attached to every request through Axios interceptors; unauthorized responses redirect to the login screen (@loginClient/src/services/ApiInterceptor.ts#25-85).
-- Table-heavy views rely on the `ApiStructContext` to describe API response shapes, enabling reusable data components (@loginClient/src/context/ApiStructContext.tsx#1-52; @loginClient/src/views/users/Dashboard.tsx#21-50).
-- Passwords are hashed prior to persistence, and JWT payloads deliberately exclude sensitive fields for safer token distribution (@loginAPI/models/Users.js#12-34; @loginAPI/controllers/apiController.js#38-56).
+## 🎨 Frontend Experience
+
+- **Theme shell** provides gradient background, glass cards, and toast stack @Client/src/components/Theme.tsx#1-78
+- **Landing page** introduces the workspace and funnels to auth flows @Client/src/views/public/Home.tsx
+- **Auth forms** integrate with the API service and toast errors on failure @Client/src/views/public/Login.tsx @Client/src/views/public/Signup.tsx
+- **Notebook hub** offers multi-column layouts, dialogs for CRUD, and context menus for rename/delete operations @Client/src/views/users/Notebooks/Notebooks.tsx#1-309
+- **Editor** lets users double-click to create blocks, drag to reposition, and auto-resizes text content @Client/src/views/users/Notebooks/Editor.tsx#1-400
 
 ---
 
 ## 🤝 Contributing
-1. Fork the repository.
-2. Create a feature branch (`git checkout -b feat/amazing-idea`).
-3. Commit changes with clear messages.
-4. Open a pull request describing motivation and testing.
 
-Bug reports, feature requests, and documentation improvements are all appreciated!
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/amazing-idea`)
+3. Commit with clear messages
+4. Open a pull request describing motivation, scope, and testing
+
+Bug reports, feature suggestions, and documentation improvements are always welcome!
 
 ---
 
 ## 📜 License
 
-License information is currently unspecified. Consider adopting MIT or Apache-2.0 for clarity before production deployment.
+License information is currently unspecified. Adopt MIT, Apache-2.0, or another OSI-approved license before production launch.
 
 ---
 
-## ☕ Support Me
+## ☕ Support & Socials
 
-If you like this project, consider buying me a coffee!
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support%20Me-orange?style=flat-square&logo=buy-me-a-coffee)](https://www.buymeacoffee.com/sugarcube08)
 
----
-
-## Don't Forget To Subscribe
-### Click on the Following Buttons:
 [![YouTube Banner](https://img.shields.io/badge/YouTube-%23FF0000.svg?logo=YouTube&logoColor=white)](https://www.youtube.com/@SugarCode-Z?sub_confirmation=1)
 [![Instagram Banner](https://img.shields.io/badge/Instagram-%23E4405F.svg?logo=Instagram&logoColor=white)](https://www.instagram.com/sugarcodez)
 [![WhatsApp Banner](https://img.shields.io/badge/WhatsApp-%25D366.svg?logo=whatsapp&logoColor=white)](https://whatsapp.com/channel/0029Vb5fFdzKgsNlaxFmhg1T)

@@ -1,10 +1,29 @@
 import LoginButton from "../../components/LoginButton";
 import SignupButton from "../../components/SignupButton";
+import { Layers3, NotebookPen, PenTool } from "lucide-react";
 
 const highlights = [
-  "Secure authentication flows out of the box",
-  "Responsive UI tailored for modern teams",
-  "Quick access to login and signup journeys"
+  "Organise notebooks, sections, and pages in a single hierarchy",
+  "A4 canvas with draggable, resizable content blocks",
+  "Autosaving editor ready for realtime upgrades"
+];
+
+const featureCards = [
+  {
+    title: "Hierarchical workspace",
+    description: "Group knowledge by notebook, section, and page with instant rename + delete flows.",
+    icon: Layers3
+  },
+  {
+    title: "Freeform editor",
+    description: "Double-click anywhere on the A4 sheet to create blocks and drag them into spatial layouts.",
+    icon: PenTool
+  },
+  {
+    title: "Secure foundation",
+    description: "JWT-authenticated API with bcrypt hashing keeps every note scoped to its owner.",
+    icon: NotebookPen
+  }
 ];
 
 const Home = () => {
@@ -24,10 +43,10 @@ const Home = () => {
 
           <div className="space-y-4">
             <h1 className="text-3xl font-semibold text-white sm:text-[2.3rem]">
-              Welcome to your login & signup workspace
+              Welcome to Notux One — your spatial notebook hub
             </h1>
             <p className="text-base text-slate-200/80 sm:text-lg">
-              A minimal starting point for building robust access flows. Customize the forms, hook into your backend, and deliver a seamless onboarding experience for your users.
+              Launch immersive notebooks where every page is an A4 canvas. Structure content with sections, personalise layouts with draggable blocks, and keep teams aligned with a secure auth layer.
             </p>
           </div>
 
@@ -58,10 +77,27 @@ const Home = () => {
             </div>
 
             <div className="rounded-2xl border border-emerald-500/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-              Need a reminder? Update the authentication routes in <code className="rounded bg-slate-900/80 px-1 text-emerald-200">src/views/auth</code> to point to your backend APIs.
+              Ready to build? Start by wiring the Express notebook routes to your datastore and customise the editor blocks to suit your workflow.
             </div>
           </div>
         </div>
+      </div>
+
+      <div className="relative mx-auto mt-16 grid w-full max-w-5xl gap-6 sm:grid-cols-3">
+        {featureCards.map(({ title, description, icon: Icon }) => (
+          <div
+            key={title}
+            className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/60 p-6 shadow-[0_30px_90px_-60px_rgba(8,47,73,0.85)] backdrop-blur transition-transform hover:-translate-y-1 hover:shadow-[0_40px_120px_-70px_rgba(16,185,129,0.35)]"
+          >
+            <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-400/15 text-emerald-200">
+              <Icon className="h-5 w-5" />
+            </div>
+            <h3 className="text-lg font-semibold text-white">{title}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-200/75">
+              {description}
+            </p>
+          </div>
+        ))}
       </div>
     </>
   );

@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { apiService } from '../../../services/ApiService';
 import PageCard from '../../../components/PageCard';
 import { FiTrash, FiEdit } from 'react-icons/fi';
+import { HiDotsVertical } from 'react-icons/hi';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -14,13 +15,18 @@ import {
   ContextMenuTrigger,
 } from '../../../components/ui/context-menu';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../../components/ui/dropdown-menu';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogTrigger,
 } from '../../../components/ui/dialog';
 
 interface Notebook {
@@ -40,7 +46,6 @@ export const Notebooks = () => {
   const [deletingNotebookId, setDeletingNotebookId] = useState<string | null>(null);
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [contextMenuOpen, setContextMenuOpen] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const fetchNotebooks = useCallback(async () => {
@@ -103,39 +108,36 @@ export const Notebooks = () => {
   const handleNotebookRename = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingNotebook || !editingNotebook.title.trim()) return;
-    
-    setContextMenuOpen(null);
-    setIsRenameDialogOpen(false);
-    setEditingNotebook(null);
-    
+
+    const current = editingNotebook;
+
     try {
       const response = await apiService({
-        url: `/users/notebook/${editingNotebook.id}`,
+        url: `/users/notebook/${current.id}`,
         method: 'PUT',
-        data: { title: editingNotebook.title },
+        data: { title: current.title },
       });
 
       if (response.data) {
-        setNotebooks(notebooks.map(nb => 
-          nb._id === editingNotebook.id 
-            ? { ...nb, title: editingNotebook.title } 
+        setNotebooks(notebooks.map(nb =>
+          nb._id === current.id
+            ? { ...nb, title: current.title }
             : nb
         ));
-        setEditingNotebook(null);
-        setIsRenameDialogOpen(false);
         await fetchNotebooks();
         toast.success('Notebook renamed successfully');
       }
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Failed to rename notebook';
       toast.error(errorMessage);
+    } finally {
+      setEditingNotebook(null);
+      setIsRenameDialogOpen(false);
     }
   };
 
   const handleNotebookDelete = async () => {
     if (!deletingNotebookId) return;
-    setContextMenuOpen(null);
-    
     try {
       await apiService({
         url: `/users/notebook/${deletingNotebookId}`,
@@ -157,151 +159,170 @@ export const Notebooks = () => {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         <PageCard isAdd onClick={handleCreateNotebook} />
         {notebooks.map((notebook) => (
-          <div key={notebook._id} onContextMenu={(e) => {
-            e.preventDefault();
-            setContextMenuOpen(notebook._id);
-          }}>
-            <ContextMenu>
-              <ContextMenuTrigger asChild>
-                <div>
-                  <PageCard
-                    title={notebook.title}
-                    onClick={() => navigate(`/user/notebooks/${notebook._id}`)}
-                  />
-                </div>
-              </ContextMenuTrigger>
-            <ContextMenuContent
-              onInteractOutside={() => setContextMenuOpen(null)}
-            >
-              <Dialog 
-                open={isRenameDialogOpen && editingNotebook?.id === notebook._id}
-                onOpenChange={(open) => {
-                  setIsRenameDialogOpen(open);
-                  setContextMenuOpen(null);
-                  if (!open) {
-                    setEditingNotebook(null);
-                  } else if (editingNotebook?.id !== notebook._id) {
-                    setEditingNotebook({ id: notebook._id, title: notebook.title });
-                  }
-                }}>
-                <DialogTrigger asChild>
-                  <ContextMenuItem 
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      setContextMenuOpen(null);
-                      setEditingNotebook({ id: notebook._id, title: notebook.title });
-                      setTimeout(() => setIsRenameDialogOpen(true), 0);
-                    }}
-                  >
-                    <FiEdit className="mr-2 h-4 w-4" />
-                    Rename
-                  </ContextMenuItem>
-                </DialogTrigger>
-                <DialogContent>
-                  <form onSubmit={handleNotebookRename}>
-                    <DialogHeader>
-                      <DialogTitle>Rename Notebook</DialogTitle>
-                      <DialogDescription>
-                        Enter a new name for this notebook
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="notebook-name">Name</Label>
-                        <Input
-                          id="notebook-name"
-                          value={editingNotebook?.title || ''}
-                          onChange={(e) =>
-                            setEditingNotebook(prev => prev ? 
-                              { ...prev, title: e.target.value } : 
-                              { id: notebook._id, title: e.target.value }
-                            )
-                          }
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingNotebook(null);
-                          setIsRenameDialogOpen(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button 
-                        type="submit"
-                        disabled={!editingNotebook?.title.trim()}
-                      >
-                        Save changes
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
-
-              <Dialog 
-                open={isDeleteDialogOpen && deletingNotebookId === notebook._id}
-                onOpenChange={(open) => {
-                  setIsDeleteDialogOpen(open);
-                  if (!open) {
-                    setDeletingNotebookId(null);
-                  } else {
-                    setDeletingNotebookId(notebook._id);
-                  }
-                }}>
-                <DialogTrigger asChild>
-                  <ContextMenuItem 
-                    className="text-red-500"
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      setContextMenuOpen(null); // Close menu immediately
-                      setDeletingNotebookId(notebook._id);
-                      setIsDeleteDialogOpen(true);
-                    }}
-                  >
-                    <FiTrash className="mr-2 h-4 w-4" />
-                    Delete
-                  </ContextMenuItem>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Are you sure?</DialogTitle>
-                    <DialogDescription>
-                      This action cannot be undone. This will permanently delete the notebook
-                      and all its contents.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setDeletingNotebookId(null);
-                        setIsDeleteDialogOpen(false);
+          <ContextMenu key={notebook._id}>
+            <ContextMenuTrigger asChild>
+              <div className="relative">
+                <PageCard
+                  title={notebook.title}
+                  onClick={() => navigate(`/user/notebooks/${notebook._id}`)}
+                />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="absolute right-2 top-2 rounded-md p-1 hover:bg-accent"
+                      aria-label={`Notebook ${notebook.title} actions`}
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                    >
+                      <HiDotsVertical className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setEditingNotebook({ id: notebook._id, title: notebook.title });
+                        setIsRenameDialogOpen(true);
                       }}
                     >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={handleNotebookDelete}
-                      disabled={!deletingNotebookId}
+                      <FiEdit className="mr-2 h-4 w-4" />
+                      Rename
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-red-500"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setDeletingNotebookId(notebook._id);
+                        setIsDeleteDialogOpen(true);
+                      }}
                     >
+                      <FiTrash className="mr-2 h-4 w-4" />
                       Delete
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <ContextMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setEditingNotebook({ id: notebook._id, title: notebook.title });
+                  setIsRenameDialogOpen(true);
+                }}
+              >
+                <FiEdit className="mr-2 h-4 w-4" />
+                Rename
+              </ContextMenuItem>
+              <ContextMenuItem
+                className="text-red-500"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setDeletingNotebookId(notebook._id);
+                  setIsDeleteDialogOpen(true);
+                }}
+              >
+                <FiTrash className="mr-2 h-4 w-4" />
+                Delete
+              </ContextMenuItem>
             </ContextMenuContent>
           </ContextMenu>
-          </div>
         ))}
       </div>
+
+      <Dialog 
+        open={isRenameDialogOpen && !!editingNotebook}
+        onOpenChange={(open) => {
+          setIsRenameDialogOpen(open);
+          if (!open) {
+            setEditingNotebook(null);
+          }
+        }}>
+        <DialogContent>
+          <form onSubmit={handleNotebookRename}>
+            <DialogHeader>
+              <DialogTitle>Rename Notebook</DialogTitle>
+              <DialogDescription>
+                Enter a new name for this notebook
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="notebook-name">Name</Label>
+                <Input
+                  id="notebook-name"
+                  value={editingNotebook?.title || ''}
+                  onChange={(e) =>
+                    setEditingNotebook(prev =>
+                      prev
+                        ? { ...prev, title: e.target.value }
+                        : { id: '', title: e.target.value }
+                    )
+                  }
+                  autoFocus
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setEditingNotebook(null);
+                  setIsRenameDialogOpen(false);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                disabled={!editingNotebook?.title.trim()}
+              >
+                Save changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog 
+        open={isDeleteDialogOpen && !!deletingNotebookId}
+        onOpenChange={(open) => {
+          setIsDeleteDialogOpen(open);
+          if (!open) {
+            setDeletingNotebookId(null);
+          }
+        }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the notebook
+              and all its contents.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDeletingNotebookId(null);
+                setIsDeleteDialogOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleNotebookDelete}
+              disabled={!deletingNotebookId}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

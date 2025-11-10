@@ -91,7 +91,7 @@ const PageCard = ({
         min-h-48 flex flex-col justify-between
         border border-border/50 shadow-lg
         transition-all duration-300
-        hover:shadow-xl hover:border-primary/50
+        hover:shadow-xl hover:border-primary/50 
         ${className}
       `}
     >

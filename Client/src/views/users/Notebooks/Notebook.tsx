@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { FiPlus, FiChevronRight, FiChevronDown, FiFile, FiFolder, FiLoader, FiTrash, FiEdit, FiChevronLeft } from 'react-icons/fi';
+import { HiDotsVertical } from 'react-icons/hi';
 import { apiService } from '../../../services/ApiService';
 import { Button } from "../../../components/ui/button";
 import {
@@ -601,7 +602,39 @@ const Notebook = () => {
                                 <span className="font-medium">{section.title}</span>
                               )}
                             </div>
-                            {!isSidebarCollapsed && <span>*</span>}
+                            {/* 3 dot icon to show more options*/}
+                            {!isSidebarCollapsed &&
+                              <div>
+                                <span>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger>
+                                      <div className="flex items-center gap-2">
+                                        <HiDotsVertical className="h-4 w-4" />
+                                      </div>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                      <DropdownMenuItem onSelect={(e) => {
+                                        e.preventDefault();
+                                        setEditingSection({ id: section._id, name: section.title });
+                                      }}>
+                                        <FiEdit className="mr-2 h-4 w-4" />
+                                        Rename
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        className="text-red-500"
+                                        onSelect={(e) => {
+                                          e.preventDefault();
+                                          setDeletingSection(section._id);
+                                        }}
+                                      >
+                                        <FiTrash className="mr-2 h-4 w-4" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </span>
+                              </div>
+                            }
                           </div>
                         </ContextMenuTrigger>
                         <ContextMenuContent>
@@ -637,12 +670,49 @@ const Notebook = () => {
                                     className={cn(
                                       "flex items-center gap-2 p-2 pl-6 rounded-md cursor-pointer",
                                       activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50',
-                                      isSidebarCollapsed && "pl-2 justify-center"
+                                      isSidebarCollapsed ? "pl-2 justify-center" : "justify-between"
                                     )}
                                     onClick={(e) => handlePageClick(e, page._id)}
                                   >
-                                    <FiFile className="h-4 w-4 text-blue-500" />
-                                    {!isSidebarCollapsed && <span className="truncate">{page.title}</span>}
+                                    <div className="flex items-center gap-2">
+                                      <FiFile className="h-4 w-4 text-blue-500" />
+                                      {!isSidebarCollapsed && <span className="truncate">{page.title}</span>}
+                                    </div>
+                                    {!isSidebarCollapsed && (
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <button
+                                            onPointerDown={(e) => e.stopPropagation()}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="p-1 rounded-md hover:bg-accent/60"
+                                            aria-label={`Page ${page.title} actions`}
+                                          >
+                                            <HiDotsVertical className="h-4 w-4" />
+                                          </button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                          <DropdownMenuItem
+                                            onSelect={(e) => {
+                                              e.preventDefault();
+                                              setEditingPage({ id: page._id, name: page.title });
+                                            }}
+                                          >
+                                            <FiEdit className="mr-2 h-4 w-4" />
+                                            Rename
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem
+                                            className="text-red-500"
+                                            onSelect={(e) => {
+                                              e.preventDefault();
+                                              setDeletingPage(page._id);
+                                            }}
+                                          >
+                                            <FiTrash className="mr-2 h-4 w-4" />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    )}
                                   </div>
                                 </ContextMenuTrigger>
                                 <ContextMenuContent>
@@ -684,12 +754,52 @@ const Notebook = () => {
                           className={cn(
                             "flex items-center gap-2 p-2 ml-2 pl-4 rounded-md cursor-pointer",
                             activePage === page._id ? 'bg-accent font-medium' : 'hover:bg-accent/50',
-                            isSidebarCollapsed && "ml-0 pl-0 justify-center"
+                            isSidebarCollapsed ? "ml-0 pl-0 justify-center" : "justify-between"
                           )}
                           onClick={(e) => handlePageClick(e, page._id)}
                         >
-                          <FiFile className="h-4 w-4 text-blue-500" />
-                          {!isSidebarCollapsed && <span className="truncate">{page.title}</span>}
+                          <div className="flex items-center gap-2">
+                            <FiFile className="h-4 w-4 text-blue-500" />
+                            {!isSidebarCollapsed && <span className="truncate">{page.title}</span>}
+                          </div>
+                          {!isSidebarCollapsed && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  onPointerDown={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                  }}
+                                  className="p-1 rounded-md hover:bg-accent/60"
+                                  aria-label={`Page ${page.title} actions`}
+                                >
+                                  <HiDotsVertical className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setEditingPage({ id: page._id, name: page.title });
+                                  }}
+                                >
+                                  <FiEdit className="mr-2 h-4 w-4" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-red-500"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setDeletingPage(page._id);
+                                  }}
+                                >
+                                  <FiTrash className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
@@ -724,7 +834,7 @@ const Notebook = () => {
       {/* Dialogs for Section Actions */}
       <Dialog open={!!editingSection} onOpenChange={(open) => !open && setEditingSection(null)}>
         <DialogContent>
-          <form onSubmit={(e) => editingSection && handleRenameSection(e, editingSection.id)}>
+          <form onSubmit={(e) => editingSection && handleRenameSection(e, editingSection.id)} >
             <DialogHeader>
               <DialogTitle>Rename Section</DialogTitle>
               <DialogDescription>
