@@ -1,21 +1,21 @@
 # Login Client (React + Vite)
 
-The **loginClient** package delivers the React interface for the Notux-One project. It pairs a themable dashboard UI with polished authentication flows that talk to the Express API.
+The **Client** package delivers the React interface for the Notux-One project. It pairs a themable dashboard UI with polished authentication flows that talk to the Express API.
 
 ---
 
 ## ✨ Highlights
-- React 19 + Vite 7 bootstrapped with TypeScript and Tailwind 4 (@loginClient/src/App.tsx#1-28; @loginClient/index.html#1-28)
-- Role-focused layouts (public, auth, user) that drive routing via React Router 7 (@loginClient/src/routes/web.tsx#1-30; @loginClient/src/Components/UserLayout.tsx#20-210)
-- Axios interceptor with token persistence, automatic auth header attachment, and redirect handling for 401 responses (@loginClient/src/services/ApiInterceptor.ts#12-87)
-- Reusable data table, profile, and settings experiences built with Tailwind utility classes (@loginClient/src/views/users/Dashboard.tsx#8-104; @loginClient/src/views/users/UserProfile.tsx#24-421)
+- React 19 + Vite 7 bootstrapped with TypeScript and Tailwind 4 (@Client/src/App.tsx#1-28; @Client/index.html#1-28)
+- Role-focused layouts (public, auth, user) that drive routing via React Router 7 (@Client/src/routes/web.tsx#1-30; @Client/src/Components/UserLayout.tsx#20-210)
+- Axios interceptor with token persistence, automatic auth header attachment, and redirect handling for 401 responses (@Client/src/services/ApiInterceptor.ts#12-87)
+- Reusable data table, profile, and settings experiences built with Tailwind utility classes (@Client/src/views/users/Dashboard.tsx#8-104; @Client/src/views/users/UserProfile.tsx#24-421)
 
 ---
 
 ## 🚀 Quick Start
 
 ```bash
-cd loginClient
+cd Client
 npm install
 npm run dev
 ```
@@ -33,7 +33,7 @@ VITE_API_URL=http://localhost:3000
 VITE_TIMEOUT=10000    # optional request timeout in ms
 ```
 
-These values feed the Axios instance that powers API calls (@loginClient/src/services/ApiInterceptor.ts#12-27).
+These values feed the Axios instance that powers API calls (@Client/src/services/ApiInterceptor.ts#12-27).
 
 ---
 
@@ -46,7 +46,7 @@ These values feed the Axios instance that powers API calls (@loginClient/src/ser
 | `npm run preview` | Preview the production build locally |
 | `npm run lint` | Run ESLint across the codebase with the provided config |
 
-Script definitions live in `package.json` (@loginClient/package.json#6-23).
+Script definitions live in `package.json` (@Client/package.json#6-23).
 
 ---
 
@@ -54,20 +54,20 @@ Script definitions live in `package.json` (@loginClient/package.json#6-23).
 
 React Router defines public, auth, and protected user routes in `src/routes/web.tsx`:
 
-- `/` → marketing-style landing page with quick calls to action (@loginClient/src/views/public/Home.tsx#10-67)
-- `/auth/login` and `/auth/signup` → auth flows using themed forms (@loginClient/src/views/public/Login.tsx#16-195)
-- `/user/*` → guarded dashboard, profile, and settings pages, rendered inside `UserLayout` (@loginClient/src/Components/UserLayout.tsx#20-210)
+- `/` → marketing-style landing page with quick calls to action (@Client/src/views/public/Home.tsx#10-67)
+- `/auth/login` and `/auth/signup` → auth flows using themed forms (@Client/src/views/public/Login.tsx#16-195)
+- `/user/*` → guarded dashboard, profile, and settings pages, rendered inside `UserLayout` (@Client/src/Components/UserLayout.tsx#20-210)
 
-`App.tsx` wires the router into the component tree and exposes navigation helpers for programmatic redirects (@loginClient/src/App.tsx#1-28).
+`App.tsx` wires the router into the component tree and exposes navigation helpers for programmatic redirects (@Client/src/App.tsx#1-28).
 
 ---
 
 ## 🔐 Authentication Flow
 
-1. Login and signup forms send credentials to the backend via the shared `apiService` helper (@loginClient/src/services/ApiService.ts#38-73).
-2. Successful logins persist the `Bearer` token in `localStorage`, which the Axios interceptor appends to subsequent requests (@loginClient/src/views/public/Login.tsx#30-41; @loginClient/src/services/ApiInterceptor.ts#25-36).
-3. Protected layouts verify authentication and fetch the active user on mount, redirecting to `/auth/login` if no token is present (@loginClient/src/Components/UserLayout.tsx#32-55).
-4. 401 responses clear stale tokens and push visitors back to the login screen (@loginClient/src/services/ApiInterceptor.ts#52-84).
+1. Login and signup forms send credentials to the backend via the shared `apiService` helper (@Client/src/services/ApiService.ts#38-73).
+2. Successful logins persist the `Bearer` token in `localStorage`, which the Axios interceptor appends to subsequent requests (@Client/src/views/public/Login.tsx#30-41; @Client/src/services/ApiInterceptor.ts#25-36).
+3. Protected layouts verify authentication and fetch the active user on mount, redirecting to `/auth/login` if no token is present (@Client/src/Components/UserLayout.tsx#32-55).
+4. 401 responses clear stale tokens and push visitors back to the login screen (@Client/src/services/ApiInterceptor.ts#52-84).
 
 ---
 
@@ -85,15 +85,15 @@ src/
 ```
 
 Key implementations:
-- `ApiStructContext` describes response metadata so tables understand how to read pagination (@loginClient/src/context/ApiStructContext.tsx#1-52)
-- `GenericDataTable` consumes the context to render sortable, paginated datasets (@loginClient/src/Components/GenericDataTable.tsx#1-364)
-- `UserProfile` demonstrates optimistic updates against the `/users/user` endpoint (@loginClient/src/views/users/UserProfile.tsx#137-417)
+- `ApiStructContext` describes response metadata so tables understand how to read pagination (@Client/src/context/ApiStructContext.tsx#1-52)
+- `GenericDataTable` consumes the context to render sortable, paginated datasets (@Client/src/Components/GenericDataTable.tsx#1-364)
+- `UserProfile` demonstrates optimistic updates against the `/users/user` endpoint (@Client/src/views/users/UserProfile.tsx#137-417)
 
 ---
 
 ## 🎨 Styling & Theming
 
-Tailwind CSS (v4) powers the design system, with additional CSS tokens defined in `src/index.css`. Theme switching is available inside `UserLayout`, synchronised with `localStorage` for persistence (@loginClient/src/Components/UserLayout.tsx#21-200).
+Tailwind CSS (v4) powers the design system, with additional CSS tokens defined in `src/index.css`. Theme switching is available inside `UserLayout`, synchronised with `localStorage` for persistence (@Client/src/Components/UserLayout.tsx#21-200).
 
 Global UI patterns—background gradients, glassmorphism, button states—are handled with Tailwind utility classes and a small custom theme hook (`src/hooks/useTheme`).
 
@@ -101,9 +101,9 @@ Global UI patterns—background gradients, glassmorphism, button states—are ha
 
 ## 🌐 API Integration Patterns
 
-- Use `apiService` for most calls—pass `url`, `method`, `data`, or `body` as needed (@loginClient/src/services/ApiService.ts#38-73).
+- Use `apiService` for most calls—pass `url`, `method`, `data`, or `body` as needed (@Client/src/services/ApiService.ts#38-73).
 - For requests that require manual abort semantics or custom headers, provide them via the `ApiConfig` options.
-- Responses return the Axios `.data` payload, so components can destructure API metadata directly (see `Dashboard` for an example table integration @loginClient/src/views/users/Dashboard.tsx#14-101).
+- Responses return the Axios `.data` payload, so components can destructure API metadata directly (see `Dashboard` for an example table integration @Client/src/views/users/Dashboard.tsx#14-101).
 
 ---
 
