@@ -77,8 +77,8 @@ Active development. Core flows are usable, but new notebook and editor capabilit
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/Sugarcube08/LoginPageUsingReact-N-ExpressAPI.git
-cd LoginPageUsingReact-N-ExpressAPI
+git clone https://github.com/Sugarcube08/Notux-One.git
+cd Notux-One
 ```
 
 ### 2. Configure environment variables

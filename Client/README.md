@@ -1,6 +1,6 @@
 # Login Client (React + Vite)
 
-The **loginClient** package delivers the React interface for the LoginPageUsingReact-N-ExpressAPI project. It pairs a themable dashboard UI with polished authentication flows that talk to the Express API.
+The **loginClient** package delivers the React interface for the Notux-One project. It pairs a themable dashboard UI with polished authentication flows that talk to the Express API.
 
 ---
 
