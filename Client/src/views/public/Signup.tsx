@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { apiService } from "../../services/ApiService";
 import type { ApiConfig } from "../../services/ApiService";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 // SVG Icons for Eye (Open and Closed) using a functional component for clarity
 interface EyeIconProps {
@@ -77,17 +77,46 @@ const Signup = () => {
   const passwordInputType = useMemo(() => isPasswordVisible ? 'text' : 'password', [isPasswordVisible]);
   const confirmPasswordInputType = useMemo(() => isConfirmPasswordVisible ? 'text' : 'password', [isConfirmPasswordVisible]);
 
-
   // Handler for form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
 
-    if (!email.match(emailRegex)) {
-      setError("Please enter email like name@domain.com");
-      setEmail("");
+    const trimmedName = name.trim();
+    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
+
+    if (!trimmedName) {
+      setError("Name is required");
       return;
     }
+
+    if (!trimmedUsername) {
+      setError("Username is required");
+      return;
+    }
+
+    if (trimmedUsername.length < 3) {
+      setError("Username must be at least 3 characters");
+      return;
+    }
+
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      setError("Please enter email like name@domain.com");
+      return;
+    }
+
+    if (!passwordRegex.test(password)) {
+      setError("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     setError(null);
     setIsSubmitting(true);
     try {
@@ -95,9 +124,9 @@ const Signup = () => {
         url: "/signup",
         method: "POST",
         body: {
-          username: username.trim(),
-          name: name.trim(),
-          email: email.trim(),
+          username: trimmedUsername,
+          name: trimmedName,
+          email: trimmedEmail,
           password: password,
         },
       };
@@ -110,19 +139,26 @@ const Signup = () => {
         return;
       }
 
-      if (response.status === 400) {
-        setError(response.message);
+      if (response.success) {
+        const login: ApiConfig = {
+          url: "/login",
+          method: "POST",
+          body: {
+            email: trimmedEmail,
+            password: password,
+          },
+        };
+
+        const loginResponse = await apiService(login);
+        // Store the token if received
+        if (loginResponse.data.token) {
+          localStorage.setItem('token', loginResponse.data.token);
+        }
+
+        // Redirect to dashboard on successful login
+        navigate('/user/dashboard');
         return;
       }
-
-      // Store the token if received
-      if (response.data.token) {
-        console.log('Token:', response.data.token)
-        localStorage.setItem('token', response.data.token);
-      }
-
-      // Redirect to dashboard on successful login
-      navigate('/auth/login');
 
     } catch (err: any) {
       console.error('Login error:', err);
@@ -165,23 +201,6 @@ const Signup = () => {
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <label htmlFor="userName" className="text-sm font-medium text-slate-200">
-                Username
-              </label>
-              <input
-                type="text"
-                id="userName"
-                name="userName"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                autoComplete="username"
-                className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-slate-100 placeholder-slate-500 focus:border-sky-400/50 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
-                placeholder="jane.doe"
-              />
-            </div>
-
-            <div className="space-y-2">
               <label htmlFor="name" className="text-sm font-medium text-slate-200">
                 Name
               </label>
@@ -197,22 +216,38 @@ const Signup = () => {
                 placeholder="Jane Doe"
               />
             </div>
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium text-slate-200">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-slate-100 placeholder-slate-500 focus:border-sky-400/50 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
+                placeholder="you@example.com"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium text-slate-200">
-              Email
+            <label htmlFor="userName" className="text-sm font-medium text-slate-200">
+              Username
             </label>
             <input
-              type="email"
-              id="email"
-              name="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              type="text"
+              id="userName"
+              name="userName"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               required
-              autoComplete="email"
+              autoComplete="username"
               className="w-full rounded-xl border border-white/10 bg-slate-950/60 px-4 py-3 text-slate-100 placeholder-slate-500 focus:border-sky-400/50 focus:outline-none focus:ring-2 focus:ring-sky-400/30"
-              placeholder="you@example.com"
+              placeholder="jane.doe"
             />
           </div>
 
@@ -226,6 +261,8 @@ const Signup = () => {
                   type={passwordInputType}
                   name="password"
                   id="password"
+                  pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}"
+                  title="Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -287,6 +324,9 @@ const Signup = () => {
             {isSubmitting ? 'Signing up...' : 'Create account'}
           </button>
         </form>
+        <div className="text-center text-sm text-slate-300/80 p-5">
+          already have an account? <NavLink to="/auth/login" className="text-sky-400 hover:text-sky-300">Sign in</NavLink>
+        </div>
       </div>
     </div>
   );

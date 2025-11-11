@@ -73,6 +73,7 @@ exports.createUser = async (req, res) => {
   try {
     const { username, email, password, name } = req.body;
     const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+    const passwordRegex = /^.*(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\da-zA-Z]).{8,}$/;
 
     if (!username || !email || !password || !name) {
       return res.status(400).json({ "message": "Missing required fields" });
@@ -93,7 +94,9 @@ exports.createUser = async (req, res) => {
     if (isEmailTaken.data) {
       return res.status(400).json({ "message": "Email already taken" });
     }
-    
+    if (!password.match(passwordRegex)) {
+      return res.status(400).json({ "message": "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character" });
+    }
     const user = await apiServices.createUser({ username: username, email: email, password: password, name: name });
     return res.json(user);
   } catch (err) {

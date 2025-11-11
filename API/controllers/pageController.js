@@ -2,7 +2,46 @@ const Notebook = require('../models/Notebooks');
 const Page = require('../models/Pages');
 const Section = require('../models/Sections');
 const responseService = require('../services/responseService');
-const { generateUniquePageTitle } = require('../services/pageTitleService');
+
+const generateUniquePageTitle = async (notebookID, sectionID, baseTitle) => {
+  // build query filter
+  const filter = { notebookID };
+
+  if (sectionID) {
+    filter.sectionID = sectionID;
+  } else {
+    // explicitly match null pages
+    filter.sectionID = null;
+  }
+
+  // regex: baseTitle or baseTitle (n)
+  const regex = new RegExp(`^${baseTitle}( \\(\\d+\\))?$`, 'i');
+
+  const existing = await Page.find({
+    ...filter,
+    title: regex
+  }).select('title');
+
+  if (existing.length === 0) return baseTitle;
+
+  let maxN = 0;
+
+  existing.forEach(doc => {
+    const m = doc.title.match(/\((\d+)\)$/);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      if (num > maxN) maxN = num;
+    } else {
+      // raw title exists → counts as 0
+      if (doc.title.toLowerCase() === baseTitle.toLowerCase()) {
+        if (maxN === 0) maxN = 0;
+      }
+    }
+  });
+
+  return `${baseTitle} (${maxN + 1})`;
+}
+
 
 exports.createPage = async (req, res) => {
   try {

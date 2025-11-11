@@ -30,7 +30,7 @@ import { Label } from "../../../components/ui/label";
 import { toast } from 'sonner';
 import { cn } from "../../../lib/utils";
 import Editor from "./Editor";
-import { useNavigate, useParams } from "react-router-dom";
+import { NavLink, useNavigate, useParams } from "react-router-dom";
 
 
 interface Page {
@@ -280,6 +280,7 @@ const Notebook = () => {
 
         setNewPageName("");
         toast.success('Page created successfully');
+        navigate(`/user/notebooks/${notebookId}/page/${newPage._id}`);
 
         // Close the dialog and dropdown
         const dialogClose = document.querySelector('[data-close-dialog]');

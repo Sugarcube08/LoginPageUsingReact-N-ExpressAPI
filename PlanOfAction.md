@@ -1,220 +1,112 @@
-```Phase-1: the first non-negotiable core features (MVP)
+## 🏗️ Lexical Editor Implementation Prompt: Block-Based Content Editor
 
-These are the ones that make your product actually feel like a note app — and are technically feasible early.
+This prompt describes the requirements for integrating **Lexical** into your existing block-based editor architecture, focusing on the core implementation details, the necessary hooks, and the design of the formatting toolbar.
 
-Rich-text editor
+-----
 
-bold/italic/underline
+### **Section 1: Core Goal and Architecture** 🎯
 
-headings
+The goal is to replace the `contentEditable` implementation within the existing block structure with isolated **Lexical Editor Instances**. Each block on the page must be a self-contained, fully functional Lexical editor.
 
-bullet / numbered lists
+**Lexical Component Requirements:**
 
-paste image
+1.  **Block Component (`<LexicalBlockEditor>`):** Create a reusable React component that initializes a Lexical editor and handles all its internal state.
+      * It must accept the block's content as a **Lexical JSON state object** (not HTML string).
+      * It must manage its own editor instance using the `useLexicalComposerContext` hook.
+      * It must handle updates using an **`onUpdate` listener** that serializes the state back to JSON and passes it to the parent component.
+2.  **Parent Integration:** The main `Editor` component (the one you provided) must be modified to:
+      * Render the `<LexicalBlockEditor>` component inside the position/drag container.
+      * Update the `blocks` state with the new Lexical JSON state received from the child's `onUpdate` event.
+      * Persist the JSON state to the API upon update (replacing the old HTML-based persistence).
 
-paste link
+-----
 
-drag to reorder blocks (optional, but ideal)
+### **Section 2: Lexical Configuration and Nodes** ⚙️
 
-This is the single hardest part to get right — but also the most critical.
+The configuration of the Lexical editor must be minimal and focused on basic text formatting to match the existing functionality.
 
-Hierarchical note organization
+1.  **Initial State:** The editor must be initialized with the JSON content passed via props.
+2.  **Nodes:** Define the required Lexical nodes (elements the editor can create):
+      * **Mandatory:** `ParagraphNode`, `TextNode`, `RootNode`.
+      * **Formatting:** Include the necessary Lexical built-in nodes to support the four toolbar options (`b`, `i`, `u`, `s`)—no custom nodes required here.
+3.  **Plugins:** The component must include the following essential plugins:
+      * **History Plugin:** For reliable undo/redo functionality.
+      * **RichText Plugin:** To enable basic text input and formatting.
+      * **OnChange Plugin:** To monitor changes and trigger the parent `onUpdate` serialization.
 
-Notebook → Section → Page OR
+-----
 
-Folder → Page
+### **Section 3: Formatting Toolbar Implementation** 🔧
 
-Choose one — don’t mix both initially.
+The toolbar must be a separate, reusable component that appears only when text is selected inside *any* of the active block editors.
 
-Autosave + Sync
+1.  **Toolbar Component (`<FloatingToolbar>`):** Design a component that receives the current editor instance and selection information.
 
-every keystroke saved automatically
+2.  **Visibility and Positioning:**
 
-saves occur silently
+      * The toolbar should use the browser's `window.getSelection()` and `getBoundingClientRect()` to position itself, similar to your original `updateToolbarPos` logic.
+      * It must only be visible when a text selection is present **and** the selection is inside a Lexical editor instance.
 
-no “Save” button
+3.  **Command Execution:** Each button must perform the following action when clicked:
 
-Full-text search
+    | Button | Lexical Command | Action |
+    | :--- | :--- | :--- |
+    | **B** (Bold) | `TOGGLE_TEXT_FORMAT_COMMAND` | Dispatch the command with argument **`'bold'`**. |
+    | **I** (Italic) | `TOGGLE_TEXT_FORMAT_COMMAND` | Dispatch the command with argument **`'italic'`**. |
+    | **U** (Underline) | `TOGGLE_TEXT_FORMAT_COMMAND` | Dispatch the command with argument **`'underline'`**. |
+    | **S** (Strikethrough) | `TOGGLE_TEXT_FORMAT_COMMAND` | Dispatch the command with argument **`'strikethrough'`**. |
 
-search page title + note body text
+4.  **Active State:** The buttons must visually indicate their active state (e.g., background color change) if the current selection includes the respective formatting. This requires checking the active editor's state against the selected text's format.
 
-(this is where tools like Elasticsearch / Meilisearch / Typesense often enter, but you can start with Postgres Full Text Search)
+-----
 
-Authentication + ownership
+### **Section 4: Block Creation and Focus** 🖱️
 
-users can create account
+Refactor the block creation and focus logic to work with Lexical.
 
-sign in/out
+1.  **Block Creation:** When a new block is created via double-click (`handlePageDoubleClick`), the API payload should include a **minimal, empty Lexical JSON state** (a root node containing an empty paragraph node) instead of an empty content string (`""`).
+2.  **Focus/Edit Mode:** The `enterEditMode` function should no longer focus a standard `contentEditable` div. Instead, it must programmatically tell the Lexical editor instance to gain focus, placing the cursor where the user double-clicked. This is achieved by **dispatching the `FOCUS_COMMAND`** to the specific Lexical editor instance.
 
-notes tied to logged-in user
+-----
 
-That is enough to ship something that feels “real”.
+## 💡 Solution Sketch: Core Hook Structure
 
-Phase-2: high value upgrades after MVP
+The essential change will be within the `<LexicalBlockEditor>` component using the following structure:
 
-Sequentially:
+```javascript
+// LexicalBlockEditor.jsx
 
-drag/drop images + attachments
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+// ... import other necessary components and hooks
 
-tags / labels
+const theme = { /* Define minimal theme for text nodes and paragraph */ };
+const editorConfig = { nodes: [ /* ... nodes */ ], theme: theme, onError: console.error };
 
-offline-edit support
-
-multiple cursors (collab) → CRDT / OT
-
-OCR on images (Vision API)
-
-```
-
-
-
-### **Editor Window Functional Description**
-
-We are building a **freeform A4-sized page editor**, similar to OneNote / FigJam hybrid — where user can tap anywhere, create text, drag, resize and edit inline.
-The entire page state (all shapes, text, positions, zoom, etc.) will be managed by **tldraw** and saved/restored using **tldraw snapshot JSON**.
-
----
-
-### **Canvas / Page**
-
-* Single **A4 sheet** centered in window.
-
-* Page can be **toggled** between:
-
-  * **Portrait** → 794px x 1123px
-  * **Landscape** → 1123px x 794px
-
-* Page sizing changes only affect the visual wrapper.
-
-* **tldraw** manages all shapes internally.
-
-Zoom operations apply to the entire page (tldraw camera), not individual shapes.
-
----
-
-### **Blocks / Content Elements**
-
-We are NOT making our own blocks or separate block model anymore.
-
-**Every piece of editable content on the page is a native tldraw shape.**
-
-Shapes include:
-
-* Text shape (main type right now)
-* Code block shapes (later)
-* Todo block shapes (later)
-* Image shapes (later)
-
-For text shapes:
-
-* user types directly in place
-* editing happens inline inside tldraw’s built-in editor
-* resize / drag / move is handled by tldraw
-
-Extra UI on selected shape (custom decoration):
-
-* delete icon (top-right corner)
-* resize handle icon (bottom-right)
-* move handle icon (bottom-middle)
-
----
-
-### **Text Editing**
-
-Formatting is done using **tldraw’s text formatting API**, triggered by buttons in our side panel.
-
-Formatting options required:
-
-* Bold
-* Italic
-* Underline
-* Highlight
-* Bullet list
-* Number list
-* Headings (H1–H6)
-* Text color
-* Font size
-
-When user creates a new text shape:
-
-* start with default width (e.g. `300px`)
-* height grows automatically (unless user resizes manually)
-
----
-
-### **Right Sidebar Tool Panel**
-
-Always visible on the right side of the editor window.
-
-Contains 3 sections:
-
----
-
-**Section 1 — Block & Text Tools**
-
-* Type selector (text / code / todo / image)
-* Bold
-* Italic
-* Underline
-* Highlight
-* Bullet list
-* Numbered list
-* Headings (H1…H6)
-* Text color
-* Font size
-
-These operations apply to the currently selected tldraw shape.
-
----
-
-**Section 2 — Arrow Move Controls**
-
-4 directional arrows (↑ ↓ ← →)
-
-Behavior:
-
-* user selects shape
-* user presses arrow button
-* shape moves a little in that direction (n pixels)
-
----
-
-**Section 3 — Zoom & Persist**
-
-* Zoom In
-* Zoom Out
-* Reset Zoom
-* Save Button
-
-Save triggers snapshot capture → backend updates Page’s snapshot field.
-
----
-
-### **Backend / DB**
-
-Only one DB model needed now: **Pages**
-
-Each Page document stores:
-
-* `orientation` (`portrait` / `landscape`)
-* `snapshot` (tldraw full editor snapshot JSON)
-
-Blocks are NOT separate Mongo docs anymore.
-
----
-
-### **Tech Stack**
-
-| Feature                            | Tech       |
-| ---------------------------------- | ---------- |
-| Canvas, drag, resize, zoom, shapes | **tldraw** |
-| Text inline formatting             | **tldraw** |
-| Backend API                        | Express    |
-| Storage                            | MongoDB    |
-| Frontend framework                 | React      |
-
----
-
-### Goal
-
-User opens editor → snapshot loads → user can tap to create text, drag shapes, resize, format → snapshot auto-saves (or manual save) → reopening page restores everything exactly as before.
+const LexicalBlockEditor = ({ state, blockId, onContentChange }) => {
+  return (
+    <LexicalComposer initialConfig={editorConfig}>
+      {/* 1. Editable component */}
+      <RichTextPlugin
+        contentEditable={<ContentEditable className="lexical-content" />}
+        placeholder={<div className="lexical-placeholder">Enter notes...</div>}
+      />
+      
+      {/* 2. Essential plugins */}
+      <HistoryPlugin />
+      
+      {/* 3. Custom update and state serialization */}
+      <LexicalOnChangePlugin onChange={(editorState, editor) => {
+          // Serialize state to JSON and pass to parent
+          editorState.read(() => {
+              const json = editorState.toJSON();
+              onContentChange(blockId, json);
+          });
+      }} />
+      
+      {/* 4. State hydration plugin (to load 'state' from props) */}
+      <InitialContentPlugin initialContent={state} />
+
+    </LexicalComposer>
+  );
+};
+```w

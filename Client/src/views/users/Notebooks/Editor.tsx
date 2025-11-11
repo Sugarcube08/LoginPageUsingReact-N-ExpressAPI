@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Block, RawBlock } from "../../../types/typeEditor";
 import { apiService } from "../../../services/ApiService";
 import { toast } from "sonner";
@@ -23,12 +23,31 @@ const Editor = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [zCounter, setZCounter] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   const dragRef = useRef<DragState>(null);
   const resizeRef = useRef<ResizeState>(null);
   const pageRef = useRef<HTMLDivElement>(null);
-  const contentRefs = useMemo(() => new Map<string, HTMLDivElement | null>(), []);
+  const contentRefs = useRef(new Map<string, HTMLDivElement | null>()).current;
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [toolbarPos, setToolbarPos] = useState<{ x: number, y: number } | null>(null)
+
+  const updateToolbarPos = useCallback(() => {
+    if (!editingId) return setToolbarPos(null);
+
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return setToolbarPos(null);
+
+    const range = sel.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    if (!rect || !rect.width || !rect.height) return setToolbarPos(null);
+
+    // position slightly above selection
+    setToolbarPos({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 8,
+    });
+  }, [editingId]);
+
   const setContentRef = useCallback(
     (id: string) => (el: HTMLDivElement | null) => { contentRefs.set(id, el); },
     [contentRefs]
@@ -39,6 +58,10 @@ const Editor = () => {
   // live mirrors + hydration guard
   const blocksRef = useRef<Block[]>([]);
   const hydratedOnceRef = useRef(false);
+  useEffect(() => {
+    document.addEventListener("selectionchange", updateToolbarPos);
+    return () => document.removeEventListener("selectionchange", updateToolbarPos);
+  }, [updateToolbarPos]);
 
   const syncBlocks = useCallback((next: Block[] | ((prev: Block[]) => Block[])) => {
     setBlocks(prev => {
@@ -119,7 +142,6 @@ const Editor = () => {
     return updated;
   }, [syncBlocks]);
 
-  // find topmost block under a click
   const blockAtClick = (e: React.MouseEvent) => {
     const rect = pageRef.current!.getBoundingClientRect();
     const px = e.clientX - rect.left;
@@ -128,43 +150,14 @@ const Editor = () => {
     return sorted.find(b => px >= b.x && px <= b.x + b.width && py >= b.y && py <= b.y + b.height) || null;
   };
 
-  // sanitize html so empty states truly shrink
-  const sanitizeHtml = (html: string): string => {
-    if (typeof window === "undefined") return html;
-    const scratch = document.createElement("div");
-    scratch.innerHTML = html.replace(/<\/?span[^>]*>/gi, "").replace(/&nbsp;/gi, " ");
-    const hasMedia = !!scratch.querySelector("img,svg,video,audio,iframe");
-
-    // strip trailing meaningless nodes
-    let child = scratch.lastChild;
-    const isMeaningful = (n: Node) => {
-      if (n.nodeType === Node.TEXT_NODE) return (n.textContent ?? "").replace(/\u00A0/g, "").trim().length > 0;
-      if (n.nodeType === Node.ELEMENT_NODE) {
-        const el = n as HTMLElement;
-        if (el.querySelector("img,svg,video,audio,iframe")) return true;
-        const inner = el.innerHTML.replace(/<br\s*\/?>(?=\s*<br\s*\/?>(\s|$))/gi, "");
-        const stripped = inner.replace(/<br\s*\/?>/gi, "").replace(/\u00A0/g, "").trim();
-        return stripped.length > 0 || (el.textContent ?? "").replace(/\u00A0/g, "").trim().length > 0;
-      }
-      return false;
-    };
-    while (child && !isMeaningful(child)) {
-      const prev = child.previousSibling;
-      scratch.removeChild(child);
-      child = prev;
-    }
-    const text = scratch.textContent?.replace(/\u00A0/g, "").trim() ?? "";
-    if (!hasMedia && text === "") scratch.innerHTML = "";
-    return scratch.innerHTML;
-  };
-
-  // shrink exactly to content (overlay outline outside)
   const fitBlockToContent = useCallback((id: string) => {
-    queueMicrotask(() => {
+    if (typeof window === "undefined") return;
+    window.requestAnimationFrame(() => {
       const el = contentRefs.get(id);
       if (!el) return;
       const bk = blocksRef.current.find(b => b.id === id);
       if (!bk) return;
+
       el.style.height = "auto";
       const natural = el.scrollHeight;
 
@@ -175,28 +168,21 @@ const Editor = () => {
       el.style.height = `${height}px`;
       el.style.overflowY = "hidden";
 
-      // reflect in state if changed
       if (height !== bk.height) {
-        applyBlockUpdate(id, cur => ({ ...cur, height }));
+        applyBlockUpdate(id, cur => (cur.height === height ? cur : { ...cur, height }));
       }
     });
   }, [applyBlockUpdate, contentRefs]);
 
-  const commitBlock = useCallback((id: string | null | undefined) => {
+  const commitBlock = useCallback(async (id: string | null | undefined) => {
     if (!id) return;
     const latest = blocksRef.current.find(b => b.id === id);
-    if (latest) void persistBlock(latest);
-  }, [persistBlock]);
+    if (latest) {
+      latest.content = cleanHTML(latest.content);
+      await persistBlock(latest);
+    }
 
-  const exitEditMode = useCallback((opts?: { id?: string; persist?: boolean }) => {
-    const targetId = opts?.id ?? editingId;
-    if (!targetId) return;
-    setEditingId(prev => (prev === targetId ? null : prev));
-    fitBlockToContent(targetId);
-    if (opts?.persist !== false) commitBlock(targetId);
-    const el = contentRefs.get(targetId);
-    if (el && typeof document !== "undefined" && document.activeElement === el) el.blur();
-  }, [commitBlock, contentRefs, editingId, fitBlockToContent]);
+  }, [persistBlock]);
 
   const enterEditMode = useCallback((id: string, focusPoint?: { x: number; y: number }) => {
     setSelectedId(id);
@@ -215,6 +201,29 @@ const Editor = () => {
     });
   }, [contentRefs, fitBlockToContent]);
 
+  const updateContent = useCallback((id: string, html: string) => {
+    applyBlockUpdate(id, b => (b.content === html ? b : { ...b, content: html }));
+    fitBlockToContent(id);
+  }, [applyBlockUpdate, fitBlockToContent]);
+
+  const exitEditMode = useCallback((opts?: { id?: string; persist?: boolean }) => {
+    const targetId = opts?.id ?? editingId;
+    if (!targetId) return;
+
+    const el = contentRefs.get(targetId);
+    if (el) {
+      const cleaned = cleanHTML(el.innerHTML);
+      updateContent(targetId, cleaned);
+    }
+
+    setEditingId(prev => (prev === targetId ? null : prev));
+    fitBlockToContent(targetId);
+
+    if (opts?.persist !== false) commitBlock(targetId);
+
+    if (el && typeof document !== "undefined" && document.activeElement === el) el.blur();
+  }, [commitBlock, contentRefs, editingId, fitBlockToContent, updateContent]);
+
   const bringToFront = useCallback((id: string) => {
     let nextZ = zCounter;
     const updated = applyBlockUpdate(id, b => {
@@ -224,7 +233,6 @@ const Editor = () => {
     });
     if (updated && nextZ !== zCounter) setZCounter(nextZ);
   }, [applyBlockUpdate, zCounter]);
-
 
   const fetchPageContent = useCallback(async () => {
     if (!notebookId || !pageId) return;
@@ -273,13 +281,8 @@ const Editor = () => {
     return () => document.removeEventListener("pointerdown", handler);
   }, [editingId, exitEditMode]);
 
-  const updateContent = useCallback((id: string, htmlRaw: string) => {
-    const html = sanitizeHtml(htmlRaw);
-    applyBlockUpdate(id, b => (b.content === html ? b : { ...b, content: html }));
-    fitBlockToContent(id);
-  }, [applyBlockUpdate, fitBlockToContent]);
-
   const handlePageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (toolbarRef.current?.contains(e.target as Node)) return;
     if (e.currentTarget !== e.target) return;
     if (selectedId) setSelectedId(null);
     exitEditMode();
@@ -324,7 +327,10 @@ const Editor = () => {
       if (b) {
         syncBlocks(prev => [...prev, b]);
         setZCounter(prev => Math.max(prev, b.z, newZ));
-        enterEditMode(b.id, { x: e.clientX, y: e.clientY });
+
+        requestAnimationFrame(() => {
+          enterEditMode(b.id, { x: e.clientX, y: e.clientY });
+        });
       }
     } catch {
       toast.error("Failed to create block.");
@@ -359,7 +365,7 @@ const Editor = () => {
   const endDrag = (e: React.PointerEvent) => {
     const st = dragRef.current;
     if (!st) return;
-    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
     const block = blocksRef.current.find(b => b.id === st.id);
     if (block) void persistBlock(block);
     dragRef.current = null;
@@ -386,7 +392,6 @@ const Editor = () => {
         if (newW === b.width) return b;
         return { ...b, width: newW };
       }
-      // corner resize (keep min + within page)
       newW = Math.min(Math.max(MIN_BLOCK_WIDTH, newW), PAGE_W - b.x);
       newH = Math.min(Math.max(MIN_BLOCK_HEIGHT, newH), PAGE_H - b.y);
       if (newW === b.width && newH === b.height) return b;
@@ -397,54 +402,164 @@ const Editor = () => {
   const endResize = (e: React.PointerEvent) => {
     const st = resizeRef.current;
     if (!st) return;
-    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { }
     const id = st.id;
     queueMicrotask(() => { fitBlockToContent(id); commitBlock(id); });
     resizeRef.current = null;
   };
 
-  // Save button — bulk, fallback per-block
-  const handleSaveAll = useCallback(async () => {
-    if (!notebookId || !pageId) return;
-    const latest = blocksRef.current;
-    if (!latest.length) {
-      toast.info("Nothing to save.");
-      return;
-    }
-    setIsBulkSaving(true);
-    try {
-      try {
-        await apiService({
-          url: `/users/notebook/${notebookId}/page/${pageId}/blocks`,
-          method: "PUT",
-          data: {
-            blocks: latest.map(b => ({
-              blockId: b.id,
-              content: b.content,
-              position: { x: b.x, y: b.y, width: b.width, height: b.height, zIndex: b.z },
-            })),
-          },
-        });
-      } catch {
-        await Promise.all(latest.map(b => persistBlock(b)));
-      }
-      toast.success("All blocks saved.");
-    } catch {
-      toast.error("Failed to save all blocks.");
-    } finally {
-      setIsBulkSaving(false);
-    }
-  }, [notebookId, pageId, persistBlock]);
+  const cleanHTML = (html: string) => {
+    const div = document.createElement("div");
+    div.innerHTML = html;
 
+    // 1) remove empty nodes
+    div.querySelectorAll("b,i,u").forEach(el => {
+      if (!el.textContent) el.remove();
+    });
+
+    // 2) flatten nested same tags like <b><b> </b></b>
+    ["b", "i", "u"].forEach(tag => {
+      div.querySelectorAll(tag).forEach(node => {
+        let nested;
+        while ((nested = node.querySelector(tag))) {
+          nested.replaceWith(...nested.childNodes);
+        }
+      });
+    });
+
+    // 3) merge adjacent same tags
+    ["b", "i", "u"].forEach(tag => {
+      div.querySelectorAll(tag).forEach(node => {
+        const next = node.nextSibling;
+        if (next && next.nodeType === 1 && (next as HTMLElement).tagName.toLowerCase() === tag) {
+          node.innerHTML =
+            node.innerHTML.replace(/\s+$/, "") +
+            " " +
+            (next as HTMLElement).innerHTML.replace(/^\s+/, "");
+          next.remove();
+        }
+      });
+    });
+
+    return div.innerHTML;
+  }
+
+  const replaceSelectionWithHTML = useCallback(
+    (tag: 'b' | 'i' | 'u' | 's') => {
+      const sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0) return;
+
+      const findActiveEditable = () => {
+        const node = sel.anchorNode;
+        if (!node) return null;
+        for (const [id, el] of contentRefs) {
+          if (el && el.contains(node)) return { id, el };
+        }
+        return null;
+      };
+
+      const target =
+        (editingId && contentRefs.get(editingId)
+          ? { id: editingId, el: contentRefs.get(editingId)! }
+          : findActiveEditable());
+
+      if (!target) return;
+      const range = sel.getRangeAt(0);
+      if (range.collapsed) return;
+
+      const wrap = `<${tag}>`;
+      const unwrap = `</${tag}>`;
+
+      // clone HTML fragment of selection
+      const temp = document.createElement('div');
+      temp.append(range.cloneContents());
+      let html = temp.innerHTML;
+
+      // strip tag if present inside anywhere
+      const stripped = html
+        .replaceAll(new RegExp(`<${tag}[^>]*>`, "gi"), "")
+        .replaceAll(new RegExp(`</${tag}>`, "gi"), "");
+
+      // if any tag found inside → UNSTYLE instead of wrap
+      const containsTag = html !== stripped;
+
+      if (containsTag) {
+        html = stripped;
+      } else {
+        html = `${wrap}${html}${unwrap}`;
+      }
+
+      // replace
+      range.deleteContents();
+      const frag = range.createContextualFragment(html);
+      const lastNode = frag.lastChild;
+      range.insertNode(frag);
+
+      if (lastNode) {
+        const after = document.createRange();
+        after.setStartAfter(lastNode);
+        after.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(after);
+      }
+      const cleaned = cleanHTML(target.el.innerHTML);
+      updateContent(target.id, cleaned);
+      commitBlock(target.id);
+      exitEditMode({ id: target.id });
+
+    },
+    [editingId, contentRefs, updateContent, commitBlock]
+  );
 
   return (
     <div className="w-full h-full flex flex-col items-center py-10 bg-background text-foreground overflow-auto">
-      <div className="w-full flex justify-end mb-4 px-4" style={{ maxWidth: PAGE_W }}>
-        <Button variant="outline" onClick={handleSaveAll} disabled={isBulkSaving || isLoading}>
-          {isBulkSaving ? "Saving…" : "Save"}
-        </Button>
-      </div>
+      {/* Toolbar */}
+      {toolbarPos && (
+        <div
+          className="fixed flex items-center gap-1 bg-popover border border-border shadow-md rounded-md px-2 py-1"
+          style={{
+            transform: "translate(-50%, -100%)",
+            left: toolbarPos.x,
+            top: toolbarPos.y,
+            zIndex: 9999
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => replaceSelectionWithHTML('b')}
+          >B</Button>
 
+          <Button
+            variant="ghost"
+            size="sm"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => replaceSelectionWithHTML('i')}
+          >I</Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => replaceSelectionWithHTML('u')}
+          >U</Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => replaceSelectionWithHTML('s')}
+          >
+            S
+          </Button>
+
+        </div>
+      )}
+
+
+      {/* Page */}
       <div
         ref={pageRef}
         onClick={handlePageClick}
@@ -485,7 +600,7 @@ const Editor = () => {
                 if (editingId && editingId !== b.id) exitEditMode({ persist: true });
               }}
             >
-              {/* Selection OUTLINE overlay (outside the layout) */}
+              {/* Selection outline */}
               {isActive && (
                 <div
                   className="absolute inset-0 pointer-events-none"
@@ -493,7 +608,7 @@ const Editor = () => {
                 />
               )}
 
-              {/* Drag overlay when not editing */}
+              {/* Drag overlay */}
               {isActive && !isEditing && (
                 <div
                   className="absolute inset-0 cursor-move"
@@ -502,7 +617,7 @@ const Editor = () => {
                 />
               )}
 
-              {/* Delete bubble (hidden while editing) */}
+              {/* Delete button */}
               {isActive && !isEditing && (
                 <button
                   onPointerDown={(e) => e.stopPropagation()}
@@ -523,26 +638,23 @@ const Editor = () => {
                 </button>
               )}
 
-              {/* CONTENT (measurement target) */}
+              {/* ContentEditable */}
               <div
                 ref={setContentRef(b.id)}
                 contentEditable={isEditing}
                 suppressContentEditableWarning
-                className={`w-full h-full p-2 text-sm outline-none whitespace-pre-wrap wrap-break-words ${
-                  isEditing ? "cursor-text caret-blue-500" : "cursor-default"
-                }`}
+                className={`w-full h-full p-2 text-sm outline-none whitespace-pre-wrap break-words ${isEditing ? "cursor-text caret-blue-500" : "cursor-default"}`}
                 style={{
-                  boxSizing: "border-box", 
+                  boxSizing: "border-box",
                   userSelect: isEditing ? "text" : "none",
                   overflowY: "hidden",
+                  overflowWrap: "anywhere",
                 }}
                 onPointerDown={(e) => { e.stopPropagation(); setSelectedId(b.id); }}
                 onDoubleClick={(e) => { e.stopPropagation(); bringToFront(b.id); enterEditMode(b.id, { x: e.clientX, y: e.clientY }); }}
                 onInput={(e) => {
                   const el = e.currentTarget;
-                  const html = sanitizeHtml(el.innerHTML);
-                  if (html === "" && el.innerHTML !== "") el.innerHTML = "";
-                  updateContent(b.id, html);
+                  updateContent(b.id, el.innerHTML);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Escape") {
@@ -550,10 +662,9 @@ const Editor = () => {
                     exitEditMode({ id: b.id });
                   }
                 }}
-                onBlur={() => exitEditMode({ id: b.id })}
               />
 
-              {/* Horizontal resize handle (hidden while editing) */}
+              {/* Horizontal resize handle */}
               {isActive && !isEditing && (
                 <div
                   onPointerDown={(e) => { e.stopPropagation(); startResize(e, b, "horizontal"); }}
@@ -574,20 +685,20 @@ const Editor = () => {
 };
 
 // caret placement at click point
-function placeCaret(el: HTMLElement, clientX: number, clientY: number) {
+const placeCaret = (el: HTMLElement, clientX: number, clientY: number) => {
   const anyDoc = document as any;
   const range =
     anyDoc.caretRangeFromPoint
       ? anyDoc.caretRangeFromPoint(clientX, clientY)
       : anyDoc.caretPositionFromPoint
         ? (() => {
-            const pos = anyDoc.caretPositionFromPoint(clientX, clientY);
-            if (!pos) return null;
-            const r = document.createRange();
-            r.setStart(pos.offsetNode, pos.offset);
-            r.setEnd(pos.offsetNode, pos.offset);
-            return r;
-          })()
+          const pos = anyDoc.caretPositionFromPoint(clientX, clientY);
+          if (!pos) return null;
+          const r = document.createRange();
+          r.setStart(pos.offsetNode, pos.offset);
+          r.setEnd(pos.offsetNode, pos.offset);
+          return r;
+        })()
         : null;
 
   const sel = window.getSelection();
@@ -600,7 +711,7 @@ function placeCaret(el: HTMLElement, clientX: number, clientY: number) {
   el.focus();
   sel?.selectAllChildren(el);
   sel?.collapseToEnd();
-}
+};
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 

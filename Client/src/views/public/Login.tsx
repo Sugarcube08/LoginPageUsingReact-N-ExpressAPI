@@ -32,14 +32,16 @@ const Login = () => {
       };
 
       const response = await apiService(api);
-
+      console.log(response);
       // Store the token if received
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
       }
-
-      // Redirect to dashboard on successful login
-      navigate('/user/dashboard');
+      if(localStorage.getItem('token')){
+        navigate('/user/dashboard');
+      } else {
+        navigate('/auth/signup');
+      }
     } catch (err: any) {
       console.error('Login error:', err);
 

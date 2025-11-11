@@ -62,7 +62,6 @@ exports.deleteBlock = async (req, res) => {
 
 exports.updateBlock = async (req, res) => {
     try{
-        console.log(req.body);
         const blockId = req.params.blockId;
         const { content, position } = req.body;
         const data = await Block.findByIdAndUpdate(blockId, { content: content, position: position });

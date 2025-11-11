@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogHeader, Di
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { toast } from 'sonner';
 
 interface PageCardProps {
   title?: string;
@@ -26,6 +27,8 @@ const PageCard = ({
     e.preventDefault();
     if (onClick && notebookName.trim()) {
       onClick(notebookName.trim());
+    }else{
+      toast.error('Please enter a name for the notebook');
     }
   };
 

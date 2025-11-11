@@ -3,6 +3,37 @@ const responseService = require('../services/responseService');
 const Page = require('../models/Pages');
 const Notebook = require('../models/Notebooks');
 
+const generateUniqueSectionTitle = async (notebookID, baseTitle) => {
+  const regex = new RegExp(`^${baseTitle}( \\(\\d+\\))?$`, 'i');
+
+  const existing = await Section.find({
+    notebookID,
+    title: regex
+  }).select('title');
+
+  if (existing.length === 0) {
+    return baseTitle;
+  }
+  let maxN = 0;
+  existing.forEach(doc => {
+    const m = doc.title.match(/\((\d+)\)$/);
+    if (m) {
+      const num = parseInt(m[1], 10);
+      if (num > maxN) maxN = num;
+    } else {
+      // if raw baseTitle exists — that counts as 0
+      if (doc.title.toLowerCase() === baseTitle.toLowerCase()) {
+        if (maxN === 0) maxN = 0;
+      }
+    }
+  });
+
+  // next available integer
+  const next = maxN + 1;
+  return `${baseTitle} (${next})`;
+}
+
+
 exports.createSection = async (req, res) => {
   try {
     const { title, notebookID } = req.body;
